@@ -25,14 +25,21 @@ if [ ! -x "$MAVEN_HOME/bin/mvn" ]; then
         fi
     fi
 
-    if command -v sha512sum >/dev/null 2>&1 && [ -f "$ARCHIVE.sha512" ]; then
-        EXPECTED=$(tr -d '[:space:]' < "$ARCHIVE.sha512")
+    EXPECTED=$(tr -d '[:space:]' < "$ARCHIVE.sha512")
+    if command -v sha512sum >/dev/null 2>&1; then
         ACTUAL=$(sha512sum "$ARCHIVE" | awk '{print $1}')
-        if [ "$EXPECTED" != "$ACTUAL" ]; then
-            printf '%s\n' "Maven distribution checksum verification failed." >&2
-            rm -f "$ARCHIVE"
-            exit 1
-        fi
+    elif command -v shasum >/dev/null 2>&1; then
+        ACTUAL=$(shasum -a 512 "$ARCHIVE" | awk '{print $1}')
+    elif command -v openssl >/dev/null 2>&1; then
+        ACTUAL=$(openssl dgst -sha512 "$ARCHIVE" | awk '{print $NF}')
+    else
+        printf '%s\n' "A SHA-512 tool (sha512sum, shasum, or openssl) is required." >&2
+        exit 1
+    fi
+    if [ "$EXPECTED" != "$ACTUAL" ]; then
+        printf '%s\n' "Maven distribution checksum verification failed." >&2
+        rm -f "$ARCHIVE"
+        exit 1
     fi
 
     tar -xzf "$ARCHIVE" -C "$DIST_ROOT"
