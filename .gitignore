@@ -1,0 +1,25 @@
+# Build output
+target/
+
+# Local Maven bootstrap distribution
+.mvn/dist/
+
+# Runtime data
+data/
+*.mv.db
+*.trace.db
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
