@@ -1,8 +1,9 @@
 .git
 .github
+.gradle
 .idea
 .vscode
-target
+build
 data
 *.log
 README.md

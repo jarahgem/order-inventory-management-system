@@ -1,17 +1,19 @@
-FROM maven:3.9.11-eclipse-temurin-21 AS build
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /workspace
 
-COPY pom.xml ./
-RUN mvn --batch-mode --no-transfer-progress dependency:go-offline
+COPY gradlew gradlew.bat build.gradle.kts settings.gradle.kts gradle.properties ./
+COPY gradle ./gradle
+RUN chmod +x gradlew gradle/wrapper/bootstrap-wrapper.sh \
+    && ./gradlew --no-daemon dependencies
 
 COPY src ./src
-RUN mvn --batch-mode --no-transfer-progress clean package
+RUN ./gradlew --no-daemon clean bootJar
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 RUN addgroup -S application && adduser -S application -G application
-COPY --from=build /workspace/target/order-inventory-service.jar /app/order-inventory-service.jar
+COPY --from=build /workspace/build/libs/order-inventory-service.jar /app/order-inventory-service.jar
 RUN chown -R application:application /app
 
 USER application
