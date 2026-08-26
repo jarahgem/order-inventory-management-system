@@ -1,9 +1,9 @@
 package com.megharaj.orderinventory.payment.application;
 
+import com.megharaj.orderinventory.common.error.InvalidRequestException;
 import com.megharaj.orderinventory.order.application.OrderApplicationService;
 import com.megharaj.orderinventory.order.application.OrderView;
 import com.megharaj.orderinventory.payment.domain.PaymentSimulationOutcome;
-import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -27,7 +27,9 @@ public class PaymentApplicationService {
             UUID orderId,
             String rawIdempotencyKey,
             PaymentSimulationOutcome requestedOutcome) {
-        Objects.requireNonNull(requestedOutcome, "requestedOutcome must not be null");
+        if (requestedOutcome == null) {
+            throw new InvalidRequestException("outcome must not be null");
+        }
         IdempotencyKey idempotencyKey = new IdempotencyKey(rawIdempotencyKey);
         PaymentPreparation preparation = transactionService.prepare(
                 orderId, idempotencyKey, requestedOutcome);
