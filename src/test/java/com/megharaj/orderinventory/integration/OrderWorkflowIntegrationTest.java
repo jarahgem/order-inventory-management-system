@@ -79,6 +79,24 @@ class OrderWorkflowIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    void failedPaymentReleasesEveryItemInAMultiItemOrder() {
+        CatalogItemView firstProduct = createProduct(catalogService, 4);
+        CatalogItemView secondProduct = createProduct(catalogService, 7);
+        OrderView order = orderService.createAndReserve(new CreateOrderCommand(
+                "multi-item-payment-failure",
+                List.of(
+                        new CreateOrderLineCommand(firstProduct.productId(), 2),
+                        new CreateOrderLineCommand(secondProduct.productId(), 3))));
+
+        OrderView failed = paymentService.processPayment(
+                order.orderId(), paymentKey(), PaymentSimulationOutcome.FAILURE);
+
+        assertThat(failed.status()).isEqualTo(OrderStatus.PAYMENT_FAILED);
+        assertInventory(firstProduct, 4, 0);
+        assertInventory(secondProduct, 7, 0);
+    }
+
+    @Test
     void cancellationReleasesInventoryAndIsIdempotent() {
         CatalogItemView product = createProduct(catalogService, 5);
         OrderView order = createOrder(product, 2);
