@@ -14,11 +14,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
@@ -93,8 +94,11 @@ public class ApiExceptionHandler {
                 request);
     }
 
-    @ExceptionHandler(CannotAcquireLockException.class)
-    ProblemDetail handleLockContention(CannotAcquireLockException exception, HttpServletRequest request) {
+    @ExceptionHandler({
+        PessimisticLockingFailureException.class,
+        ObjectOptimisticLockingFailureException.class
+    })
+    ProblemDetail handleLockContention(Exception exception, HttpServletRequest request) {
         LOGGER.warn("Could not acquire a database lock", exception);
         return problem(
                 HttpStatus.CONFLICT,
