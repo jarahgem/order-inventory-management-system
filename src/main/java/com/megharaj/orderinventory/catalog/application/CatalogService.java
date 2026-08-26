@@ -54,7 +54,7 @@ public class CatalogService {
         Instant now = clock.instant();
         Product product = Product.create(UUID.randomUUID(), sku, name, unitPrice, now);
         Inventory inventory = Inventory.create(product.getId(), command.initialQuantity(), now);
-        productRepository.save(product);
+        productRepository.saveAndFlush(product);
         inventoryRepository.save(inventory);
         return toView(product, inventory);
     }
