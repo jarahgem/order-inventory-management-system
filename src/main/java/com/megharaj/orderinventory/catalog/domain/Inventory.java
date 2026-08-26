@@ -25,7 +25,7 @@ public class Inventory {
 
     @Version
     @Column(nullable = false)
-    private long version;
+    private Long version;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
@@ -61,7 +61,7 @@ public class Inventory {
     }
 
     public long getVersion() {
-        return version;
+        return version == null ? 0L : version;
     }
 
     public Instant getUpdatedAt() {

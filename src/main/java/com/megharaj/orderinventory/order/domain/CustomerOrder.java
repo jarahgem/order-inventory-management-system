@@ -46,7 +46,7 @@ public class CustomerOrder {
 
     @Version
     @Column(nullable = false)
-    private long version;
+    private Long version;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -149,7 +149,7 @@ public class CustomerOrder {
     }
 
     public long getVersion() {
-        return version;
+        return version == null ? 0L : version;
     }
 
     public Instant getCreatedAt() {
