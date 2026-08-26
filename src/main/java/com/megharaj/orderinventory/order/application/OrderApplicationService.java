@@ -10,6 +10,7 @@ import com.megharaj.orderinventory.order.domain.InvalidOrderStateException;
 import com.megharaj.orderinventory.order.domain.OrderItemSpec;
 import com.megharaj.orderinventory.order.domain.OrderStatus;
 import com.megharaj.orderinventory.order.infrastructure.OrderRepository;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ public class OrderApplicationService {
 
     private static final int MAX_DISTINCT_ITEMS = 100;
     private static final long MAX_QUANTITY_PER_ITEM = 1_000_000L;
+    private static final BigDecimal MAX_ORDER_TOTAL = new BigDecimal("99999999999999999.99");
 
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
@@ -49,6 +51,7 @@ public class OrderApplicationService {
         String customerReference = normalizeCustomerReference(command.customerReference());
         Map<UUID, Long> quantities = normalizeItems(command.items());
         List<OrderItemSpec> itemSpecs = resolveProducts(quantities);
+        validateOrderTotal(itemSpecs);
 
         Instant now = clock.instant();
         CustomerOrder order = CustomerOrder.create(
@@ -122,6 +125,16 @@ public class OrderApplicationService {
                             product.getUnitPrice()));
                 });
         return List.copyOf(result);
+    }
+
+    private static void validateOrderTotal(List<OrderItemSpec> items) {
+        BigDecimal total = items.stream()
+                .map(item -> item.unitPrice().multiply(BigDecimal.valueOf(item.quantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (total.compareTo(MAX_ORDER_TOTAL) > 0) {
+            throw new InvalidRequestException(
+                    "Order total exceeds the supported maximum of " + MAX_ORDER_TOTAL);
+        }
     }
 
     private static Map<UUID, Long> normalizeItems(List<CreateOrderLineCommand> rawItems) {
