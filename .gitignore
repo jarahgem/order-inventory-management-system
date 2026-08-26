@@ -1,8 +1,9 @@
-# Build output
-target/
+# Gradle build output and caches
+.gradle/
+build/
 
-# Local Maven bootstrap distribution
-.mvn/dist/
+# The source-only bootstrap downloads the official, checksum-verified Wrapper JAR
+/gradle/wrapper/gradle-wrapper.jar
 
 # Runtime data
 data/
