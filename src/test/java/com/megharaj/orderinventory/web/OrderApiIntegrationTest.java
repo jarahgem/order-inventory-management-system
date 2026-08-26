@@ -73,6 +73,13 @@ class OrderApiIntegrationTest {
     }
 
     @Test
+    void returnsBadRequestForMalformedOrderIdentifier() throws Exception {
+        mockMvc.perform(post("/api/v1/orders/not-a-uuid/cancellations"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("malformed-request"));
+    }
+
+    @Test
     void returnsProblemDetailsForValidationAndInventoryConflicts() throws Exception {
         mockMvc.perform(post("/api/v1/orders")
                         .contentType(MediaType.APPLICATION_JSON)
