@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CatalogService {
 
     private static final Pattern SKU_PATTERN = Pattern.compile("[A-Z0-9][A-Z0-9_-]{1,63}");
+    private static final BigDecimal MAX_UNIT_PRICE = new BigDecimal("99999999999999999.99");
 
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
@@ -131,7 +132,12 @@ public class CatalogService {
             throw new InvalidRequestException("unitPrice must not be negative");
         }
         try {
-            return rawPrice.setScale(2, RoundingMode.UNNECESSARY);
+            BigDecimal normalized = rawPrice.setScale(2, RoundingMode.UNNECESSARY);
+            if (normalized.compareTo(MAX_UNIT_PRICE) > 0) {
+                throw new InvalidRequestException(
+                        "unitPrice exceeds the supported maximum of " + MAX_UNIT_PRICE);
+            }
+            return normalized;
         } catch (ArithmeticException exception) {
             throw new InvalidRequestException("unitPrice must contain at most two decimal places");
         }
