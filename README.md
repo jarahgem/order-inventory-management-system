@@ -50,24 +50,42 @@ commits or releases the reservation. The persisted payment attempt and required
 - Flyway database migrations
 - H2 in PostgreSQL compatibility mode for zero-setup local execution
 - PostgreSQL for the container/production profile
-- Maven, JUnit 5, AssertJ, MockMvc, and JaCoCo
+- Gradle 8.14.5 with Kotlin DSL, JUnit 5, AssertJ, MockMvc, and JaCoCo
 - Docker Compose and GitHub Actions
+
+### Why this Gradle setup
+
+| Choice | Selected | Reason | Alternative not selected |
+|---|---|---|---|
+| Build DSL | Kotlin DSL | Type-safe configuration and strong IDE assistance make the build easier to review | Groovy DSL is terser but provides weaker static guidance |
+| Project layout | Single Gradle project | The package-by-feature modular monolith is one deployable service | A multi-project build adds dependency and configuration overhead before modules need independent ownership or release cycles |
+| Dependency versions | Gradle native BOM platform | Keeps version alignment explicit without another plugin | Spring dependency-management is useful for property-based overrides, which this project does not need |
+| Gradle line | 8.14.5 | Latest patch in the Spring Boot 3.5-supported Gradle 8 line | Gradle 9 requires a separate Spring Boot compatibility decision |
+| Framework version | Keep Spring Boot 3.5.16 | Limits this change to the requested build-tool migration | A Spring Boot 4 migration would introduce unrelated framework and Jakarta ecosystem changes |
+
+The application can be split into Gradle subprojects later if catalog, inventory, order, or
+payment gains an independent team, release cadence, or deployment boundary. Until then,
+source-package boundaries provide the useful modularity without build-graph ceremony.
 
 ## Run locally
 
 ### Prerequisites
 
 - Java 21 or newer
-- `curl` or another HTTP client
+- `curl` or `wget` on Linux/macOS for the first Wrapper bootstrap; Windows uses PowerShell
+- An HTTP client such as `curl` for the API examples
 - Docker only when using PostgreSQL/containers
 
-The repository includes `mvnw` and `mvnw.cmd`. On the first invocation they download and
-verify Apache Maven 3.9.11 into `.mvn/dist`; a system Maven installation is not required.
+The repository includes `gradlew`, `gradlew.bat`, and a Gradle 8.14.5 Wrapper definition.
+A system Gradle installation is not required. The first invocation downloads the official
+Wrapper JAR, verifies its pinned SHA-256 checksum, and then lets the Wrapper download and
+verify the pinned Gradle distribution. Subsequent runs use the Gradle user-home cache.
+See [`ADR 0003`](docs/adr/0003-use-gradle-kotlin-dsl.md) for the build-tool decision.
 
 ### Start with the embedded H2 database
 
 ```bash
-./mvnw spring-boot:run
+./gradlew bootRun
 ```
 
 The default database is persisted under `./data`, so data survives application restarts.
@@ -259,13 +277,14 @@ pending attempts.
 Run all tests and create the coverage report:
 
 ```bash
-./mvnw clean verify
+./gradlew clean check
 ```
 
 Reports are written to:
 
-- `target/surefire-reports`
-- `target/site/jacoco/index.html`
+- `build/test-results/test`
+- `build/reports/tests/test/index.html`
+- `build/reports/jacoco/test/html/index.html`
 
 Important scenarios covered:
 
@@ -331,7 +350,7 @@ SPRING_PROFILES_ACTIVE=postgres \
 DB_URL=jdbc:postgresql://localhost:5432/order_inventory \
 DB_USERNAME=order_app \
 DB_PASSWORD=change-me \
-./mvnw spring-boot:run
+./gradlew bootRun
 ```
 
 ## Production readiness and scaling considerations
