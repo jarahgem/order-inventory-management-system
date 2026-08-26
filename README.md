@@ -271,7 +271,7 @@ Important scenarios covered:
 
 - Domain state transitions and invalid transitions
 - Successful reservation and payment
-- Payment failure and inventory release
+- Payment failure and inventory release, including multi-item compensation
 - Cancellation and idempotent cancellation
 - Idempotent payment retry
 - Rejection of a different payment key after an attempt exists
@@ -280,6 +280,7 @@ Important scenarios covered:
 - Confirmed order cannot be cancelled
 - Validation and problem-response contracts
 - Thirty concurrent orders competing for ten units; exactly ten succeed
+- Twelve concurrent retries of one payment; inventory is committed exactly once
 
 The concurrency test calls the real Spring transaction boundary and the real atomic SQL
 repository against H2 in PostgreSQL mode. CI runs the complete suite on every push and pull
@@ -355,6 +356,7 @@ Before exposing this service publicly:
   restock operations.
 - Store secrets in a secret manager and require TLS between every component.
 - Add rate limiting, request-size limits, audit events, and PII retention rules.
+- Add idempotency for order creation and durable, uniquely identified stock adjustments.
 - Replace the simulator with a provider adapter that uses timeouts, retries only for safe
   operations, circuit breaking, and provider-side idempotency.
 - Add an outbox table and publisher so order events are emitted atomically with state
