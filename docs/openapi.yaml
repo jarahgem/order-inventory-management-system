@@ -1,0 +1,448 @@
+openapi: 3.1.0
+info:
+  title: Order & Inventory Management API
+  version: 1.0.0
+  description: |
+    Creates orders, atomically reserves inventory, simulates idempotent payment,
+    confirms successful orders, and releases reservations after failure or cancellation.
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: Products
+  - name: Orders
+
+paths:
+  /api/v1/products:
+    get:
+      tags: [Products]
+      operationId: listProducts
+      summary: List products and current inventory
+      responses:
+        "200":
+          description: Product catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CatalogItem"
+    post:
+      tags: [Products]
+      operationId: createProduct
+      summary: Create a product and its initial inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Product created
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/products/{productId}:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    get:
+      tags: [Products]
+      operationId: getProduct
+      summary: Get a product and current inventory
+      responses:
+        "200":
+          description: Product and inventory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogItem"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/products/{productId}/restocks:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    post:
+      tags: [Products]
+      operationId: restockProduct
+      summary: Add available inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RestockRequest"
+      responses:
+        "200":
+          description: Updated inventory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/orders:
+    post:
+      tags: [Orders]
+      operationId: createOrder
+      summary: Create an order and reserve every item
+      description: |
+        Duplicate product lines are combined. The response is created only when all
+        requested quantities have been reserved in one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Order created with inventory reserved
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/orders/{orderId}:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    get:
+      tags: [Orders]
+      operationId: getOrder
+      summary: Get an order
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/orders/{orderId}/payments:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: 8-128 characters; retries must use the same key and body.
+        schema:
+          type: string
+          minLength: 8
+          maxLength: 128
+          pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    post:
+      tags: [Orders]
+      operationId: simulatePayment
+      summary: Simulate an idempotent payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulatePaymentRequest"
+      responses:
+        "200":
+          description: Confirmed order or payment-failed order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/orders/{orderId}/cancellations:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    post:
+      tags: [Orders]
+      operationId: cancelOrder
+      summary: Cancel an order that has reserved inventory
+      responses:
+        "200":
+          description: Cancelled order, or existing terminal failed/cancelled state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+components:
+  parameters:
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Conflict:
+      description: State, inventory, idempotency, or data conflict
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+  schemas:
+    CreateProductRequest:
+      type: object
+      additionalProperties: false
+      required: [sku, name, unitPrice, initialQuantity]
+      properties:
+        sku:
+          type: string
+          minLength: 2
+          maxLength: 64
+          example: PRODUCT-D
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Product D
+        unitPrice:
+          type: number
+          minimum: 0
+          multipleOf: 0.01
+          example: 14.50
+        initialQuantity:
+          type: integer
+          format: int64
+          minimum: 0
+          example: 25
+
+    RestockRequest:
+      type: object
+      additionalProperties: false
+      required: [quantity]
+      properties:
+        quantity:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 10
+
+    CatalogItem:
+      type: object
+      required:
+        - productId
+        - sku
+        - name
+        - unitPrice
+        - active
+        - availableQuantity
+        - reservedQuantity
+        - inventoryUpdatedAt
+      properties:
+        productId:
+          type: string
+          format: uuid
+        sku:
+          type: string
+        name:
+          type: string
+        unitPrice:
+          type: number
+          multipleOf: 0.01
+        active:
+          type: boolean
+        availableQuantity:
+          type: integer
+          format: int64
+          minimum: 0
+        reservedQuantity:
+          type: integer
+          format: int64
+          minimum: 0
+        inventoryUpdatedAt:
+          type: string
+          format: date-time
+
+    CreateOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [customerReference, items]
+      properties:
+        customerReference:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: customer-1001
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/CreateOrderLine"
+
+    CreateOrderLine:
+      type: object
+      additionalProperties: false
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 1000000
+
+    SimulatePaymentRequest:
+      type: object
+      additionalProperties: false
+      required: [outcome]
+      properties:
+        outcome:
+          type: string
+          enum: [SUCCESS, FAILURE]
+
+    Order:
+      type: object
+      required:
+        - orderId
+        - customerReference
+        - status
+        - totalAmount
+        - currency
+        - items
+        - createdAt
+        - updatedAt
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        customerReference:
+          type: string
+        status:
+          type: string
+          enum:
+            - CREATED
+            - INVENTORY_RESERVED
+            - PAYMENT_PENDING
+            - CONFIRMED
+            - PAYMENT_FAILED
+            - CANCELLED
+        totalAmount:
+          type: number
+          multipleOf: 0.01
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          example: USD
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrderItem:
+      type: object
+      required: [productId, sku, name, quantity, unitPrice, lineTotal]
+      properties:
+        productId:
+          type: string
+          format: uuid
+        sku:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+          format: int64
+          minimum: 1
+        unitPrice:
+          type: number
+          multipleOf: 0.01
+        lineTotal:
+          type: number
+          multipleOf: 0.01
+
+    Problem:
+      type: object
+      required: [type, title, status, detail, instance, errorCode, timestamp]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        errorCode:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        correlationId:
+          type: string
+        fieldErrors:
+          type: object
+          additionalProperties:
+            type: string

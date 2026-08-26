@@ -1,0 +1,37 @@
+@baseUrl = http://localhost:8080
+@productA = 11111111-1111-1111-1111-111111111111
+@productB = 22222222-2222-2222-2222-222222222222
+@productC = 33333333-3333-3333-3333-333333333333
+
+### Health
+GET {{baseUrl}}/actuator/health
+
+### List products and inventory
+GET {{baseUrl}}/api/v1/products
+
+### Create and reserve an order
+# @name createOrder
+POST {{baseUrl}}/api/v1/orders
+Content-Type: application/json
+X-Correlation-ID: assessment-run-001
+
+{
+  "customerReference": "customer-1001",
+  "items": [
+    {"productId": "{{productA}}", "quantity": 2},
+    {"productId": "{{productB}}", "quantity": 1},
+    {"productId": "{{productC}}", "quantity": 5}
+  ]
+}
+
+### Pay successfully (IntelliJ resolves createOrder response variables)
+POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.orderId}}/payments
+Content-Type: application/json
+Idempotency-Key: assessment-payment-success-001
+
+{
+  "outcome": "SUCCESS"
+}
+
+### Cancel an order (replace the ID when not using response variables)
+POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.orderId}}/cancellations
