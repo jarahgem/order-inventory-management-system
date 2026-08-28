@@ -90,19 +90,7 @@
             "url": "{{baseUrl}}/actuator",
             "description": "Links to the Actuator endpoints exposed by the application."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Actuator links are returned', function () { pm.expect(pm.response.json()._links).to.be.an('object'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Health",
@@ -112,19 +100,7 @@
             "url": "{{baseUrl}}/actuator/health",
             "description": "Overall application health."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Application is UP', function () { pm.expect(pm.response.json().status).to.eql('UP'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Liveness",
@@ -134,19 +110,7 @@
             "url": "{{baseUrl}}/actuator/health/liveness",
             "description": "Kubernetes-style liveness probe."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Liveness is UP', function () { pm.expect(pm.response.json().status).to.eql('UP'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Readiness",
@@ -156,19 +120,7 @@
             "url": "{{baseUrl}}/actuator/health/readiness",
             "description": "Kubernetes-style readiness probe."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Readiness is UP', function () { pm.expect(pm.response.json().status).to.eql('UP'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Application info",
@@ -178,18 +130,7 @@
             "url": "{{baseUrl}}/actuator/info",
             "description": "Application metadata configured under the info namespace."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Metrics index",
@@ -199,19 +140,7 @@
             "url": "{{baseUrl}}/actuator/metrics",
             "description": "Names of available Micrometer metrics."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Metric names are returned', function () { pm.expect(pm.response.json().names).to.be.an('array'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Prometheus scrape",
@@ -221,19 +150,7 @@
             "url": "{{baseUrl}}/actuator/prometheus",
             "description": "Prometheus text exposition endpoint."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Prometheus text is returned', function () { pm.expect(pm.response.text()).to.include('# HELP'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         }
       ]
     },
@@ -264,33 +181,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const randomPart = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');",
-                  "pm.collectionVariables.set('productASku', 'POSTMAN-A-' + Date.now() + '-' + randomPart);"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
-                  "pm.test('Location header is present', function () { pm.expect(pm.response.headers.has('Location')).to.be.true; });",
-                  "const body = pm.response.json();",
-                  "pm.collectionVariables.set('productAId', body.productId);",
-                  "pm.test('Initial quantity is 10', function () { pm.expect(body.availableQuantity).to.eql(10); });",
-                  "pm.test('Nothing is reserved', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Create fresh Product B",
@@ -315,33 +206,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const randomPart = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');",
-                  "pm.collectionVariables.set('productBSku', 'POSTMAN-B-' + Date.now() + '-' + randomPart);"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
-                  "pm.test('Location header is present', function () { pm.expect(pm.response.headers.has('Location')).to.be.true; });",
-                  "const body = pm.response.json();",
-                  "pm.collectionVariables.set('productBId', body.productId);",
-                  "pm.test('Initial quantity is 5', function () { pm.expect(body.availableQuantity).to.eql(5); });",
-                  "pm.test('Nothing is reserved', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Create fresh Product C",
@@ -366,33 +231,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const randomPart = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');",
-                  "pm.collectionVariables.set('productCSku', 'POSTMAN-C-' + Date.now() + '-' + randomPart);"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
-                  "pm.test('Location header is present', function () { pm.expect(pm.response.headers.has('Location')).to.be.true; });",
-                  "const body = pm.response.json();",
-                  "pm.collectionVariables.set('productCId', body.productId);",
-                  "pm.test('Initial quantity is 20', function () { pm.expect(body.availableQuantity).to.eql(20); });",
-                  "pm.test('Nothing is reserved', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Create Product D for restock tests",
@@ -417,33 +256,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const randomPart = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');",
-                  "pm.collectionVariables.set('productDSku', 'POSTMAN-D-' + Date.now() + '-' + randomPart);"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
-                  "pm.test('Location header is present', function () { pm.expect(pm.response.headers.has('Location')).to.be.true; });",
-                  "const body = pm.response.json();",
-                  "pm.collectionVariables.set('productDId', body.productId);",
-                  "pm.test('Initial quantity is 0', function () { pm.expect(body.availableQuantity).to.eql(0); });",
-                  "pm.test('Nothing is reserved', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         }
       ]
     },
@@ -458,19 +271,7 @@
             "url": "{{baseUrl}}/api/v1/products",
             "description": "Lists catalog entries ordered by SKU."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Get Product A",
@@ -480,19 +281,7 @@
             "url": "{{baseUrl}}/api/v1/products/{{productAId}}",
             "description": "Reads one product and its current available/reserved quantities."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Correct product is returned', function () { pm.expect(pm.response.json().productId).to.eql(pm.collectionVariables.get('productAId')); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Restock Product D",
@@ -517,21 +306,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "const body = pm.response.json();",
-                  "pm.test('Available quantity is 25', function () { pm.expect(body.availableQuantity).to.eql(25); });",
-                  "pm.test('Reserved quantity is zero', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Get restocked Product D",
@@ -541,20 +316,7 @@
             "url": "{{baseUrl}}/api/v1/products/{{productDId}}",
             "description": "Verifies the persisted restock result."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "const body = pm.response.json();",
-                  "pm.test('Available quantity is 25', function () { pm.expect(body.availableQuantity).to.eql(25); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         }
       ]
     },
@@ -590,23 +352,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
-                  "const body = pm.response.json();",
-                  "pm.collectionVariables.set('successfulOrderId', body.orderId);",
-                  "pm.collectionVariables.set('successPaymentKey', 'payment-success-' + Date.now() + '-' + Math.floor(Math.random() * 1000000));",
-                  "pm.test('Inventory is reserved', function () { pm.expect(body.status).to.eql('INVENTORY_RESERVED'); });",
-                  "pm.test('Three order items are returned', function () { pm.expect(body.items).to.have.length(3); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Get reserved assessment order",
@@ -616,19 +362,7 @@
             "url": "{{baseUrl}}/api/v1/orders/{{successfulOrderId}}",
             "description": "Reads the order before payment."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Order remains reserved', function () { pm.expect(pm.response.json().status).to.eql('INVENTORY_RESERVED'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Simulate successful payment",
@@ -658,19 +392,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Order is confirmed', function () { pm.expect(pm.response.json().status).to.eql('CONFIRMED'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Retry successful payment with same key",
@@ -700,19 +422,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Order is still confirmed', function () { pm.expect(pm.response.json().status).to.eql('CONFIRMED'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Get confirmed order",
@@ -722,19 +432,7 @@
             "url": "{{baseUrl}}/api/v1/orders/{{successfulOrderId}}",
             "description": "Reads the final successful state."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Order is confirmed', function () { pm.expect(pm.response.json().status).to.eql('CONFIRMED'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         }
       ]
     },
@@ -764,22 +462,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
-                  "const body = pm.response.json();",
-                  "pm.collectionVariables.set('failedOrderId', body.orderId);",
-                  "pm.collectionVariables.set('failurePaymentKey', 'payment-failure-' + Date.now() + '-' + Math.floor(Math.random() * 1000000));",
-                  "pm.test('Inventory is reserved', function () { pm.expect(body.status).to.eql('INVENTORY_RESERVED'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Simulate failed payment",
@@ -809,19 +492,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Order is payment-failed', function () { pm.expect(pm.response.json().status).to.eql('PAYMENT_FAILED'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Get payment-failed order",
@@ -831,19 +502,7 @@
             "url": "{{baseUrl}}/api/v1/orders/{{failedOrderId}}",
             "description": "Reads the terminal failed state."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Order is payment-failed', function () { pm.expect(pm.response.json().status).to.eql('PAYMENT_FAILED'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Verify failure released Product D inventory",
@@ -853,21 +512,7 @@
             "url": "{{baseUrl}}/api/v1/products/{{productDId}}",
             "description": "Product D returns to 25 available and zero reserved units after compensation."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "const body = pm.response.json();",
-                  "pm.test('Available inventory was restored', function () { pm.expect(body.availableQuantity).to.eql(25); });",
-                  "pm.test('No inventory remains reserved', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         }
       ]
     },
@@ -897,21 +542,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
-                  "const body = pm.response.json();",
-                  "pm.collectionVariables.set('cancelledOrderId', body.orderId);",
-                  "pm.test('Inventory is reserved', function () { pm.expect(body.status).to.eql('INVENTORY_RESERVED'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Cancel order",
@@ -921,19 +552,7 @@
             "url": "{{baseUrl}}/api/v1/orders/{{cancelledOrderId}}/cancellations",
             "description": "Cancels the order and releases its four reserved units."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Order is cancelled', function () { pm.expect(pm.response.json().status).to.eql('CANCELLED'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Retry cancellation",
@@ -943,19 +562,7 @@
             "url": "{{baseUrl}}/api/v1/orders/{{cancelledOrderId}}/cancellations",
             "description": "Demonstrates idempotent cancellation for an already cancelled order."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Order remains cancelled', function () { pm.expect(pm.response.json().status).to.eql('CANCELLED'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Verify cancellation released Product D inventory",
@@ -965,21 +572,7 @@
             "url": "{{baseUrl}}/api/v1/products/{{productDId}}",
             "description": "Product D returns to 25 available and zero reserved units after cancellation."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "const body = pm.response.json();",
-                  "pm.test('Available inventory was restored', function () { pm.expect(body.availableQuantity).to.eql(25); });",
-                  "pm.test('No inventory remains reserved', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         }
       ]
     },
@@ -1010,19 +603,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 409', function () { pm.response.to.have.status(409); });",
-                  "pm.test('Conflict problem is returned', function () { pm.expect(pm.response.json().errorCode).to.eql('conflict'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Unknown product",
@@ -1032,19 +613,7 @@
             "url": "{{baseUrl}}/api/v1/products/00000000-0000-0000-0000-000000000000",
             "description": "Demonstrates the standard 404 ProblemDetail response."
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });",
-                  "pm.test('Not-found problem is returned', function () { pm.expect(pm.response.json().errorCode).to.eql('resource-not-found'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Missing payment idempotency key",
@@ -1069,19 +638,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
-                  "pm.test('Malformed-request problem is returned', function () { pm.expect(pm.response.json().errorCode).to.eql('malformed-request'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Duplicate SKU",
@@ -1106,19 +663,7 @@
               }
             }
           },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 409', function () { pm.response.to.have.status(409); });",
-                  "pm.test('Conflict problem is returned', function () { pm.expect(pm.response.json().errorCode).to.eql('conflict'); });"
-                ]
-              }
-            }
-          ]
+          "response": []
         }
       ]
     }

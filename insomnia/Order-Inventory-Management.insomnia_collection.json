@@ -1,0 +1,348 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-08-28T00:00:00.000Z",
+  "__export_source": "order-inventory-management-system",
+  "resources": [
+    {
+      "_id": "wrk_oim",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "Order & Inventory Management System",
+      "description": "Manual request collection for every business API plus the exposed Actuator routes. HTTP Basic auth and the required Idempotency-Key headers are pre-filled. Paste the returned orderId into the environment after creating an order.",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_oim",
+      "name": "Local",
+      "data": {
+        "baseUrl": "http://localhost:8080",
+        "adminUser": "admin",
+        "adminPass": "local-admin-password",
+        "clientUser": "client",
+        "clientPass": "local-client-password",
+        "productAId": "11111111-1111-1111-1111-111111111111",
+        "productBId": "22222222-2222-2222-2222-222222222222",
+        "productCId": "33333333-3333-3333-3333-333333333333",
+        "orderId": "",
+        "createOrderKey": "order-demo-0001",
+        "paymentKey": "payment-demo-0001"
+      },
+      "metaSortKey": 1
+    },
+    {
+      "_id": "fld_health",
+      "_type": "request_group",
+      "parentId": "wrk_oim",
+      "name": "00 - Health and observability",
+      "description": "Actuator endpoints. Health and its probes are public; the rest require the admin account.",
+      "metaSortKey": 100
+    },
+    {
+      "_id": "req_health",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Health",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/actuator/health",
+      "body": {},
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 101
+    },
+    {
+      "_id": "req_liveness",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Liveness probe",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/actuator/health/liveness",
+      "body": {},
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 102
+    },
+    {
+      "_id": "req_readiness",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Readiness probe",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/actuator/health/readiness",
+      "body": {},
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": 103
+    },
+    {
+      "_id": "req_actuator_root",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Actuator discovery (admin)",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/actuator",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "basic",
+        "useISO88591": false,
+        "username": "{{ _.adminUser }}",
+        "password": "{{ _.adminPass }}"
+      },
+      "metaSortKey": 104
+    },
+    {
+      "_id": "req_actuator_info",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Info (admin)",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/actuator/info",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "basic",
+        "useISO88591": false,
+        "username": "{{ _.adminUser }}",
+        "password": "{{ _.adminPass }}"
+      },
+      "metaSortKey": 105
+    },
+    {
+      "_id": "req_actuator_metrics",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Metrics (admin)",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/actuator/metrics",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "basic",
+        "useISO88591": false,
+        "username": "{{ _.adminUser }}",
+        "password": "{{ _.adminPass }}"
+      },
+      "metaSortKey": 106
+    },
+    {
+      "_id": "req_actuator_prometheus",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "Prometheus (admin)",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/actuator/prometheus",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "basic",
+        "useISO88591": false,
+        "username": "{{ _.adminUser }}",
+        "password": "{{ _.adminPass }}"
+      },
+      "metaSortKey": 107
+    },
+    {
+      "_id": "fld_catalog",
+      "_type": "request_group",
+      "parentId": "wrk_oim",
+      "name": "01 - Catalog and inventory",
+      "description": "Product reads require any authenticated account; writes require the admin (CATALOG_ADMIN) account.",
+      "metaSortKey": 200
+    },
+    {
+      "_id": "req_products_list",
+      "_type": "request",
+      "parentId": "fld_catalog",
+      "name": "List products (client)",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/v1/products",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "basic",
+        "useISO88591": false,
+        "username": "{{ _.clientUser }}",
+        "password": "{{ _.clientPass }}"
+      },
+      "metaSortKey": 201
+    },
+    {
+      "_id": "req_products_get",
+      "_type": "request",
+      "parentId": "fld_catalog",
+      "name": "Get product (client)",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/v1/products/{{ _.productAId }}",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "basic",
+        "useISO88591": false,
+        "username": "{{ _.clientUser }}",
+        "password": "{{ _.clientPass }}"
+      },
+      "metaSortKey": 202
+    },
+    {
+      "_id": "req_products_create",
+      "_type": "request",
+      "parentId": "fld_catalog",
+      "name": "Create product (admin)",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/v1/products",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"sku\": \"PRODUCT-D\",\n  \"name\": \"Product D\",\n  \"unitPrice\": 14.50,\n  \"initialQuantity\": 25\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "authentication": {
+        "type": "basic",
+        "useISO88591": false,
+        "username": "{{ _.adminUser }}",
+        "password": "{{ _.adminPass }}"
+      },
+      "metaSortKey": 203
+    },
+    {
+      "_id": "req_products_restock",
+      "_type": "request",
+      "parentId": "fld_catalog",
+      "name": "Restock product (admin)",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/v1/products/{{ _.productAId }}/restocks",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"quantity\": 10\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "authentication": {
+        "type": "basic",
+        "useISO88591": false,
+        "username": "{{ _.adminUser }}",
+        "password": "{{ _.adminPass }}"
+      },
+      "metaSortKey": 204
+    },
+    {
+      "_id": "fld_orders",
+      "_type": "request_group",
+      "parentId": "wrk_oim",
+      "name": "02 - Orders, payments, cancellations",
+      "description": "Order operations require the client (ORDER_CLIENT) account. Create and payment calls send a required Idempotency-Key.",
+      "metaSortKey": 300
+    },
+    {
+      "_id": "req_orders_create",
+      "_type": "request",
+      "parentId": "fld_orders",
+      "name": "Create order (client)",
+      "description": "Sends a required Idempotency-Key. Repeat the exact request with the same key to see the original order replayed (no double reservation). Copy orderId from the response into the environment.",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/v1/orders",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"customerReference\": \"customer-1001\",\n  \"items\": [\n    { \"productId\": \"{{ _.productAId }}\", \"quantity\": 2 },\n    { \"productId\": \"{{ _.productBId }}\", \"quantity\": 1 },\n    { \"productId\": \"{{ _.productCId }}\", \"quantity\": 5 }\n  ]\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Idempotency-Key", "value": "{{ _.createOrderKey }}" }
+      ],
+      "authentication": {
+        "type": "basic",
+        "useISO88591": false,
+        "username": "{{ _.clientUser }}",
+        "password": "{{ _.clientPass }}"
+      },
+      "metaSortKey": 301
+    },
+    {
+      "_id": "req_orders_get",
+      "_type": "request",
+      "parentId": "fld_orders",
+      "name": "Get order (client)",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/v1/orders/{{ _.orderId }}",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "basic",
+        "useISO88591": false,
+        "username": "{{ _.clientUser }}",
+        "password": "{{ _.clientPass }}"
+      },
+      "metaSortKey": 302
+    },
+    {
+      "_id": "req_orders_pay_success",
+      "_type": "request",
+      "parentId": "fld_orders",
+      "name": "Pay order - SUCCESS (client)",
+      "description": "Idempotent payment. Retrying with the same Idempotency-Key and outcome is safe.",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/v1/orders/{{ _.orderId }}/payments",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"outcome\": \"SUCCESS\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Idempotency-Key", "value": "{{ _.paymentKey }}" }
+      ],
+      "authentication": {
+        "type": "basic",
+        "useISO88591": false,
+        "username": "{{ _.clientUser }}",
+        "password": "{{ _.clientPass }}"
+      },
+      "metaSortKey": 303
+    },
+    {
+      "_id": "req_orders_pay_failure",
+      "_type": "request",
+      "parentId": "fld_orders",
+      "name": "Pay order - FAILURE (client)",
+      "description": "Use on a separate order to see PAYMENT_FAILED and inventory release. Use a distinct Idempotency-Key.",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/v1/orders/{{ _.orderId }}/payments",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"outcome\": \"FAILURE\"\n}"
+      },
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Idempotency-Key", "value": "payment-failure-0001" }
+      ],
+      "authentication": {
+        "type": "basic",
+        "useISO88591": false,
+        "username": "{{ _.clientUser }}",
+        "password": "{{ _.clientPass }}"
+      },
+      "metaSortKey": 304
+    },
+    {
+      "_id": "req_orders_cancel",
+      "_type": "request",
+      "parentId": "fld_orders",
+      "name": "Cancel order (client)",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/api/v1/orders/{{ _.orderId }}/cancellations",
+      "body": {},
+      "headers": [],
+      "authentication": {
+        "type": "basic",
+        "useISO88591": false,
+        "username": "{{ _.clientUser }}",
+        "password": "{{ _.clientPass }}"
+      },
+      "metaSortKey": 305
+    }
+  ]
+}
