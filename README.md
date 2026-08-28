@@ -13,7 +13,7 @@ observability, and deployment assets provide a clear path to production.
 | Requirement | Implementation |
 |---|---|
 | Create order | `POST /api/v1/orders` |
-| Check inventory | Product responses expose available and reserved quantities |
+| Check inventory | Product reads expose stock; the reservation statement performs the authoritative atomic availability check |
 | Reserve inventory | Conditional SQL update inside the order transaction |
 | Simulate payment | `POST /api/v1/orders/{id}/payments` |
 | Confirm order | Successful payment transitions the order to `CONFIRMED` |
@@ -38,9 +38,10 @@ stateDiagram-v2
 ```
 
 The payment gateway call is made **outside** a database transaction. A short transaction
-first records `PAYMENT_PENDING`; the gateway is then called; a second short transaction
-commits or releases the reservation. The persisted payment attempt and required
-`Idempotency-Key` make retries safe.
+first records `PAYMENT_PENDING` and grants one request a time-limited processing lease; the
+gateway is then called; a second short transaction commits or releases the reservation. The
+persisted payment attempt, processing lease, and required `Idempotency-Key` make retries
+safe. While a lease is active, concurrent requests do not call the gateway.
 
 ## Technology
 
@@ -264,13 +265,15 @@ Payment is a small compensating workflow:
 7. On failure, move reserved quantity back to available and mark the order failed.
 
 Only one payment attempt is allowed per order. The idempotency key is globally unique.
-Concurrent retries serialize on the order row; a completed attempt returns the existing
-result without applying inventory changes again.
+The first request receives a database-backed processing lease. While that lease is active,
+it is the only request allowed to call the gateway. Concurrent retries return the current `PAYMENT_PENDING` or completed order state instead
+of starting another charge. Completion still applies inventory changes
+exactly once.
 
-If the process stops after step 2, retrying the same request resumes the pending attempt.
-For a real external provider, the provider must also honor the same idempotency key. A
-scheduled reconciliation worker is the natural next step for automatically recovering old
-pending attempts.
+If the process stops after step 2, the same request can claim the attempt after the lease
+expires and safely retry with the same provider-side idempotency key. A scheduled
+reconciliation worker remains the natural next step for proactively recovering old pending
+attempts rather than waiting for a client retry.
 
 ## Tests
 
@@ -299,7 +302,8 @@ Important scenarios covered:
 - Confirmed order cannot be cancelled
 - Validation and problem-response contracts
 - Thirty concurrent orders competing for ten units; exactly ten succeed
-- Twelve concurrent retries of one payment; inventory is committed exactly once
+- Twelve concurrent retries of one payment; the gateway is called once and inventory is committed exactly once
+- The exact assessment basket: A x 2, B x 1, C x 5 against stock 10/5/20, including failure release and success consumption
 
 The concurrency test calls the real Spring transaction boundary and the real atomic SQL
 repository against H2 in PostgreSQL mode. CI runs the complete suite on every push and pull
@@ -342,6 +346,7 @@ together without introducing distributed-system complexity prematurely.
 | `DB_POOL_SIZE` | `16` | Maximum Hikari pool size |
 | `DB_MIN_IDLE` | `2` | Minimum idle connections |
 | `SPRING_PROFILES_ACTIVE` | none | Use `postgres` for PostgreSQL |
+| `PAYMENT_PROCESSING_LEASE` | `30s` | Single-flight ownership window for an in-progress payment call |
 
 Example without Docker Compose:
 
@@ -362,7 +367,7 @@ Implemented now:
 - Atomic stock mutation and deterministic reservation order
 - Pessimistic order locking for payment/cancellation serialization
 - No remote call inside a database transaction
-- Persisted payment attempts and idempotency keys
+- Persisted payment attempts, idempotency keys, and a database-backed processing lease
 - Graceful shutdown
 - Health, liveness/readiness probes, metrics, and Prometheus endpoint
 - Correlation IDs and sanitized problem responses
@@ -380,8 +385,8 @@ Before exposing this service publicly:
   operations, circuit breaking, and provider-side idempotency.
 - Add an outbox table and publisher so order events are emitted atomically with state
   changes.
-- Add reconciliation for stale `PAYMENT_PENDING` attempts and alerting for consistency
-  failures.
+- Add scheduled reconciliation for stale `PAYMENT_PENDING` attempts and alerting for
+  consistency failures. Client retries already recover an expired processing lease.
 - Run PostgreSQL integration tests with Testcontainers in an environment where Docker is
   available, in addition to the fast H2 suite.
 - Define SLOs, dashboards, distributed tracing, backup/restore tests, and migration

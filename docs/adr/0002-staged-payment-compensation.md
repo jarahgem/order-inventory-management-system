@@ -13,21 +13,23 @@ locks for an unbounded period, and still would not provide atomicity across syst
 
 Use a small saga-like workflow:
 
-1. In a short transaction, lock the order, create a unique pending payment attempt, and
-   change the order to `PAYMENT_PENDING`.
+1. In a short transaction, lock the order, create a unique pending payment attempt with
+   a time-limited processing lease, and change the order to `PAYMENT_PENDING`.
 2. Commit.
 3. Call the `PaymentGateway` port with an idempotency key.
 4. In a second transaction, lock the order and either:
    - commit reserved inventory and confirm the order, or
    - release reserved inventory and mark payment failed.
 
-A retry must use the same idempotency key and simulated outcome. Completed attempts return
-the existing result.
+A retry must use the same idempotency key and simulated outcome. An active lease prevents
+concurrent gateway calls; an expired lease can be claimed after a crash. Completed attempts
+return the existing result. See ADR 0004 for the ownership details.
 
 ## Consequences
 
 - No remote call occurs inside a database transaction.
-- Payment retries cannot consume or release inventory twice.
+- Payment retries cannot consume or release inventory twice, and an active lease prevents
+  simultaneous gateway calls for the same attempt.
 - A process crash can leave a pending attempt, but it is durable and retryable.
 - Production operation needs a reconciliation worker and provider-side idempotency.
 - A failed payment is terminal in this exercise; adding retries would require an explicit

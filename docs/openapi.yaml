@@ -163,6 +163,9 @@ paths:
       tags: [Orders]
       operationId: simulatePayment
       summary: Simulate an idempotent payment
+      description: >-
+        One request owns a time-limited processing lease. A concurrent retry with the same
+        idempotency key may return PAYMENT_PENDING while the owner calls the gateway.
       requestBody:
         required: true
         content:
@@ -171,7 +174,7 @@ paths:
               $ref: "#/components/schemas/SimulatePaymentRequest"
       responses:
         "200":
-          description: Confirmed order or payment-failed order
+          description: "Current order state: PAYMENT_PENDING, CONFIRMED, or PAYMENT_FAILED"
           content:
             application/json:
               schema:

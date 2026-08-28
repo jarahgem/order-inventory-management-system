@@ -72,9 +72,9 @@ sequenceDiagram
     participant D as Database
 
     C->>T: prepare(order, key, outcome)
-    T->>D: lock order; insert PENDING attempt
+    T->>D: lock order; insert PENDING attempt and processing lease
     D-->>T: commit
-    T-->>C: internal preparation
+    T-->>C: preparation with lease ownership
     C->>G: charge outside transaction
     G-->>C: success or failure
     C->>T: complete attempt
@@ -120,8 +120,10 @@ same order without serializing unrelated orders.
 ### Payment
 
 A unique constraint permits one payment attempt per order and one use of an idempotency
-key globally. A retry with the same key and outcome resumes or returns that attempt. A
-retry with different semantics is rejected.
+key globally. A database-backed processing lease grants only one request permission to call
+the gateway. Concurrent retries with the same key and outcome observe the pending or
+completed attempt; after a crashed owner's lease expires, one retry can take over. A retry
+with different semantics is rejected.
 
 ## Failure cases
 
@@ -130,9 +132,9 @@ retry with different semantics is rejected.
 | Product missing/inactive | No stock changed; request rejected |
 | One item lacks stock | Whole reservation transaction rolls back |
 | Payment declined | Entire reservation released; order marked failed |
-| Duplicate payment request | Existing attempt reused; no duplicate stock mutation |
+| Duplicate payment request | Existing attempt reused; active lease prevents a simultaneous gateway call and duplicate stock mutation |
 | Concurrent payment/cancel | Order row lock serializes commands; invalid loser is rejected |
-| Process stops after payment preparation | Attempt remains pending and can be retried with the same key |
+| Process stops after payment preparation | Attempt remains pending; after the lease expires, the same key can claim and resume it |
 | Consistency update affects no row | Transaction rolls back and emits a server error for alerting |
 
 ## Extensibility
@@ -160,4 +162,4 @@ For substantially higher throughput:
 2. Use an outbox and broker for asynchronous fulfilment and notifications.
 3. Keep PostgreSQL primary writes authoritative; use replicas only for tolerant reads.
 4. Add pagination, archival, and time-partitioning for order/payment history.
-5. Measure lock wait, payment latency, reservation failure rate, and pending-attempt age.
+5. Measure lock wait, payment latency, reservation failure rate, lease takeovers, and pending-attempt age.
