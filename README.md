@@ -219,11 +219,40 @@ authorization.
 | `GET` | `/api/v1/orders/{orderId}` | Get an order |
 | `POST` | `/api/v1/orders/{orderId}/payments` | Simulate idempotent payment |
 | `POST` | `/api/v1/orders/{orderId}/cancellations` | Cancel a reserved order |
-| `GET` | `/actuator/health` | Health/readiness/liveness |
+| `GET` | `/actuator` | Discover exposed Actuator links |
+| `GET` | `/actuator/health` | Overall health |
+| `GET` | `/actuator/health/liveness` | Liveness probe |
+| `GET` | `/actuator/health/readiness` | Readiness probe |
+| `GET` | `/actuator/info` | Application metadata |
+| `GET` | `/actuator/metrics` | Available metric names |
 | `GET` | `/actuator/prometheus` | Prometheus metrics |
 
-The full contract is in [`docs/openapi.yaml`](docs/openapi.yaml), and runnable IntelliJ/
-VS Code HTTP examples are in [`docs/api-examples.http`](docs/api-examples.http).
+## API documentation and Postman
+
+The repository provides several complementary API references:
+
+- [`docs/openapi.yaml`](docs/openapi.yaml): OpenAPI 3.1 contract with complete request examples.
+- [`docs/postman-testing.md`](docs/postman-testing.md): payloads, response examples, validation
+  rules, error shapes, and a collection execution guide.
+- [`postman/Order-Inventory-Management.postman_collection.json`](postman/Order-Inventory-Management.postman_collection.json):
+  ready-to-run collection for every business API and configured Actuator route.
+- [`postman/Local.postman_environment.json`](postman/Local.postman_environment.json): local
+  `baseUrl` environment.
+- [`docs/api-examples.http`](docs/api-examples.http): runnable IntelliJ/VS Code HTTP examples.
+- [`docs/controller-service-reference.md`](docs/controller-service-reference.md): controller-to-service
+  mapping, transaction boundaries, guarantees, and exception behavior.
+
+Import the two files under `postman/`, select **Order Inventory - Local**, and run folders in
+numeric order. The setup folder creates fresh products and automatically captures all generated
+product IDs, order IDs, and payment idempotency keys.
+
+Controller and application-service methods also contain JavaDoc. Generate the browsable site with:
+
+```bash
+./gradlew javadoc
+```
+
+The entry point is `build/docs/javadoc/index.html`.
 
 ## Why inventory cannot be oversold
 
@@ -289,6 +318,9 @@ Reports are written to:
 - `build/reports/tests/test/index.html`
 - `build/reports/jacoco/test/html/index.html`
 
+Generate method-level JavaDoc separately with `./gradlew javadoc`; output is written to
+`build/docs/javadoc/index.html`.
+
 Important scenarios covered:
 
 - Domain state transitions and invalid transitions
@@ -330,6 +362,14 @@ src/main/java/com/megharaj/orderinventory
 │   ├── order             # Order/payment endpoints and requests
 │   └── common            # Correlation ID and problem responses
 └── config                # Cross-cutting beans
+```
+
+Supporting documentation and runnable client assets are kept outside the production source
+packages:
+
+```text
+docs/                       # OpenAPI, architecture, method reference, payloads, and ADRs
+postman/                    # Importable collection and local environment
 ```
 
 This package-by-feature layout keeps related domain, application, and adapter code close
