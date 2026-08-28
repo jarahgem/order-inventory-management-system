@@ -1,5 +1,9 @@
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:21-jdk-jammy AS build
 WORKDIR /workspace
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY gradlew gradlew.bat build.gradle.kts settings.gradle.kts gradle.properties ./
 COPY gradle ./gradle
