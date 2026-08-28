@@ -1,0 +1,1126 @@
+{
+  "info": {
+    "_postman_id": "552b33e7-5cb1-47e4-83d9-b39ec12c72de",
+    "name": "Order & Inventory Management System",
+    "description": "Complete local test collection for every business API and the configured Actuator health/observability routes. Run folders in numeric order. The setup folder creates fresh products, captures IDs, and makes success, payment-failure, cancellation, idempotency, and error flows repeatable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "productAId",
+      "value": "11111111-1111-1111-1111-111111111111",
+      "type": "string"
+    },
+    {
+      "key": "productBId",
+      "value": "22222222-2222-2222-2222-222222222222",
+      "type": "string"
+    },
+    {
+      "key": "productCId",
+      "value": "33333333-3333-3333-3333-333333333333",
+      "type": "string"
+    },
+    {
+      "key": "productDId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productASku",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productBSku",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productCSku",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productDSku",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "successfulOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "failedOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cancelledOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "successPaymentKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "failurePaymentKey",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Health and observability",
+      "description": "Actuator endpoints exposed by the local application configuration.",
+      "item": [
+        {
+          "name": "Actuator discovery",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/actuator",
+            "description": "Links to the Actuator endpoints exposed by the application."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Actuator links are returned', function () { pm.expect(pm.response.json()._links).to.be.an('object'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/actuator/health",
+            "description": "Overall application health."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Application is UP', function () { pm.expect(pm.response.json().status).to.eql('UP'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Liveness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/actuator/health/liveness",
+            "description": "Kubernetes-style liveness probe."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Liveness is UP', function () { pm.expect(pm.response.json().status).to.eql('UP'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Readiness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/actuator/health/readiness",
+            "description": "Kubernetes-style readiness probe."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Readiness is UP', function () { pm.expect(pm.response.json().status).to.eql('UP'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Application info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/actuator/info",
+            "description": "Application metadata configured under the info namespace."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Metrics index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/actuator/metrics",
+            "description": "Names of available Micrometer metrics."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Metric names are returned', function () { pm.expect(pm.response.json().names).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prometheus scrape",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/actuator/prometheus",
+            "description": "Prometheus text exposition endpoint."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Prometheus text is returned', function () { pm.expect(pm.response.text()).to.include('# HELP'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - Prepare repeatable test data",
+      "description": "Creates a fresh Product A/B/C set with assessment quantities 10/5/20 and a separate Product D for restock, payment-failure, and cancellation tests. Running this folder makes the remaining collection repeatable without depending on the persisted seed state.",
+      "item": [
+        {
+          "name": "Create fresh Product A",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/products",
+            "description": "Creates Product A with 10 available units and stores its productId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{productASku}}\",\n  \"name\": \"Postman Product A\",\n  \"unitPrice\": 19.99,\n  \"initialQuantity\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const randomPart = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');",
+                  "pm.collectionVariables.set('productASku', 'POSTMAN-A-' + Date.now() + '-' + randomPart);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Location header is present', function () { pm.expect(pm.response.headers.has('Location')).to.be.true; });",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('productAId', body.productId);",
+                  "pm.test('Initial quantity is 10', function () { pm.expect(body.availableQuantity).to.eql(10); });",
+                  "pm.test('Nothing is reserved', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create fresh Product B",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/products",
+            "description": "Creates Product B with 5 available units and stores its productId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{productBSku}}\",\n  \"name\": \"Postman Product B\",\n  \"unitPrice\": 29.99,\n  \"initialQuantity\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const randomPart = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');",
+                  "pm.collectionVariables.set('productBSku', 'POSTMAN-B-' + Date.now() + '-' + randomPart);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Location header is present', function () { pm.expect(pm.response.headers.has('Location')).to.be.true; });",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('productBId', body.productId);",
+                  "pm.test('Initial quantity is 5', function () { pm.expect(body.availableQuantity).to.eql(5); });",
+                  "pm.test('Nothing is reserved', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create fresh Product C",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/products",
+            "description": "Creates Product C with 20 available units and stores its productId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{productCSku}}\",\n  \"name\": \"Postman Product C\",\n  \"unitPrice\": 9.99,\n  \"initialQuantity\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const randomPart = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');",
+                  "pm.collectionVariables.set('productCSku', 'POSTMAN-C-' + Date.now() + '-' + randomPart);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Location header is present', function () { pm.expect(pm.response.headers.has('Location')).to.be.true; });",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('productCId', body.productId);",
+                  "pm.test('Initial quantity is 20', function () { pm.expect(body.availableQuantity).to.eql(20); });",
+                  "pm.test('Nothing is reserved', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Product D for restock tests",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/products",
+            "description": "Creates a zero-stock product that the restock endpoint will raise to 25 units.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{productDSku}}\",\n  \"name\": \"Postman Product D\",\n  \"unitPrice\": 14.5,\n  \"initialQuantity\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const randomPart = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');",
+                  "pm.collectionVariables.set('productDSku', 'POSTMAN-D-' + Date.now() + '-' + randomPart);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Location header is present', function () { pm.expect(pm.response.headers.has('Location')).to.be.true; });",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('productDId', body.productId);",
+                  "pm.test('Initial quantity is 0', function () { pm.expect(body.availableQuantity).to.eql(0); });",
+                  "pm.test('Nothing is reserved', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Product APIs",
+      "item": [
+        {
+          "name": "List products and inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/products",
+            "description": "Lists catalog entries ordered by SKU."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Product A",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/products/{{productAId}}",
+            "description": "Reads one product and its current available/reserved quantities."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Correct product is returned', function () { pm.expect(pm.response.json().productId).to.eql(pm.collectionVariables.get('productAId')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restock Product D",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/products/{{productDId}}/restocks",
+            "description": "Adds 25 units to Product D using the atomic restock endpoint.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 25\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Available quantity is 25', function () { pm.expect(body.availableQuantity).to.eql(25); });",
+                  "pm.test('Reserved quantity is zero', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get restocked Product D",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/products/{{productDId}}",
+            "description": "Verifies the persisted restock result."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Available quantity is 25', function () { pm.expect(body.availableQuantity).to.eql(25); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Successful order and payment",
+      "description": "Runs the exact A x 2, B x 1, C x 5 assessment basket and confirms it.",
+      "item": [
+        {
+          "name": "Create assessment order and reserve inventory",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-assessment-success",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/orders",
+            "description": "Creates the exact assessment basket and reserves every item atomically.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerReference\": \"postman-success-{{$timestamp}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productAId}}\",\n      \"quantity\": 2\n    },\n    {\n      \"productId\": \"{{productBId}}\",\n      \"quantity\": 1\n    },\n    {\n      \"productId\": \"{{productCId}}\",\n      \"quantity\": 5\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('successfulOrderId', body.orderId);",
+                  "pm.collectionVariables.set('successPaymentKey', 'payment-success-' + Date.now() + '-' + Math.floor(Math.random() * 1000000));",
+                  "pm.test('Inventory is reserved', function () { pm.expect(body.status).to.eql('INVENTORY_RESERVED'); });",
+                  "pm.test('Three order items are returned', function () { pm.expect(body.items).to.have.length(3); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get reserved assessment order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/orders/{{successfulOrderId}}",
+            "description": "Reads the order before payment."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Order remains reserved', function () { pm.expect(pm.response.json().status).to.eql('INVENTORY_RESERVED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simulate successful payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{successPaymentKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/orders/{{successfulOrderId}}/payments",
+            "description": "Commits reserved inventory and confirms the order.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"SUCCESS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Order is confirmed', function () { pm.expect(pm.response.json().status).to.eql('CONFIRMED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retry successful payment with same key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{successPaymentKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/orders/{{successfulOrderId}}/payments",
+            "description": "Demonstrates idempotency: the same key and payload return the confirmed order without another charge.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"SUCCESS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Order is still confirmed', function () { pm.expect(pm.response.json().status).to.eql('CONFIRMED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get confirmed order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/orders/{{successfulOrderId}}",
+            "description": "Reads the final successful state."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Order is confirmed', function () { pm.expect(pm.response.json().status).to.eql('CONFIRMED'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Payment failure and compensation",
+      "item": [
+        {
+          "name": "Create order that will fail payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/orders",
+            "description": "Reserves three Product D units for the failure path.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerReference\": \"postman-payment-failure-{{$timestamp}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productDId}}\",\n      \"quantity\": 3\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('failedOrderId', body.orderId);",
+                  "pm.collectionVariables.set('failurePaymentKey', 'payment-failure-' + Date.now() + '-' + Math.floor(Math.random() * 1000000));",
+                  "pm.test('Inventory is reserved', function () { pm.expect(body.status).to.eql('INVENTORY_RESERVED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simulate failed payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{failurePaymentKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/orders/{{failedOrderId}}/payments",
+            "description": "Releases the three reserved units and moves the order to PAYMENT_FAILED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"FAILURE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Order is payment-failed', function () { pm.expect(pm.response.json().status).to.eql('PAYMENT_FAILED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get payment-failed order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/orders/{{failedOrderId}}",
+            "description": "Reads the terminal failed state."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Order is payment-failed', function () { pm.expect(pm.response.json().status).to.eql('PAYMENT_FAILED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify failure released Product D inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/products/{{productDId}}",
+            "description": "Product D returns to 25 available and zero reserved units after compensation."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Available inventory was restored', function () { pm.expect(body.availableQuantity).to.eql(25); });",
+                  "pm.test('No inventory remains reserved', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Cancellation and release",
+      "item": [
+        {
+          "name": "Create order that will be cancelled",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/orders",
+            "description": "Reserves four Product D units for the cancellation path.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerReference\": \"postman-cancellation-{{$timestamp}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productDId}}\",\n      \"quantity\": 4\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('cancelledOrderId', body.orderId);",
+                  "pm.test('Inventory is reserved', function () { pm.expect(body.status).to.eql('INVENTORY_RESERVED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel order",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/orders/{{cancelledOrderId}}/cancellations",
+            "description": "Cancels the order and releases its four reserved units."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Order is cancelled', function () { pm.expect(pm.response.json().status).to.eql('CANCELLED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retry cancellation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/orders/{{cancelledOrderId}}/cancellations",
+            "description": "Demonstrates idempotent cancellation for an already cancelled order."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Order remains cancelled', function () { pm.expect(pm.response.json().status).to.eql('CANCELLED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify cancellation released Product D inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/products/{{productDId}}",
+            "description": "Product D returns to 25 available and zero reserved units after cancellation."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Available inventory was restored', function () { pm.expect(body.availableQuantity).to.eql(25); });",
+                  "pm.test('No inventory remains reserved', function () { pm.expect(body.reservedQuantity).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - Expected error examples",
+      "description": "Optional negative tests. Each request passes when the documented problem response is returned.",
+      "item": [
+        {
+          "name": "Insufficient inventory",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/orders",
+            "description": "Requests the maximum valid line quantity from a product with only 25 units.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerReference\": \"postman-insufficient-inventory\",\n  \"items\": [\n    {\n      \"productId\": \"{{productDId}}\",\n      \"quantity\": 1000000\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('Conflict problem is returned', function () { pm.expect(pm.response.json().errorCode).to.eql('conflict'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown product",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/products/00000000-0000-0000-0000-000000000000",
+            "description": "Demonstrates the standard 404 ProblemDetail response."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('Not-found problem is returned', function () { pm.expect(pm.response.json().errorCode).to.eql('resource-not-found'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing payment idempotency key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/orders/{{successfulOrderId}}/payments",
+            "description": "Omits the mandatory Idempotency-Key header.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"SUCCESS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Malformed-request problem is returned', function () { pm.expect(pm.response.json().errorCode).to.eql('malformed-request'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Duplicate SKU",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/products",
+            "description": "Attempts to create another product with Product A's normalized SKU.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{productASku}}\",\n  \"name\": \"Duplicate Product A\",\n  \"unitPrice\": 19.99,\n  \"initialQuantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('Conflict problem is returned', function () { pm.expect(pm.response.json().errorCode).to.eql('conflict'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

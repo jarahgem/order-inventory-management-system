@@ -38,6 +38,14 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateProductRequest"
+            examples:
+              productD:
+                summary: Create Product D with initial stock
+                value:
+                  sku: PRODUCT-D
+                  name: Product D
+                  unitPrice: 14.50
+                  initialQuantity: 25
       responses:
         "201":
           description: Product created
@@ -85,6 +93,11 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/RestockRequest"
+            examples:
+              addTenUnits:
+                summary: Add ten available units
+                value:
+                  quantity: 10
       responses:
         "200":
           description: Updated inventory
@@ -111,6 +124,18 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateOrderRequest"
+            examples:
+              assessmentBasket:
+                summary: Product A x 2, Product B x 1, Product C x 5
+                value:
+                  customerReference: customer-1001
+                  items:
+                    - productId: 11111111-1111-1111-1111-111111111111
+                      quantity: 2
+                    - productId: 22222222-2222-2222-2222-222222222222
+                      quantity: 1
+                    - productId: 33333333-3333-3333-3333-333333333333
+                      quantity: 5
       responses:
         "201":
           description: Order created with inventory reserved
@@ -172,6 +197,15 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/SimulatePaymentRequest"
+            examples:
+              success:
+                summary: Confirm the order and consume reserved stock
+                value:
+                  outcome: SUCCESS
+              failure:
+                summary: Fail the order and release reserved stock
+                value:
+                  outcome: FAILURE
       responses:
         "200":
           description: "Current order state: PAYMENT_PENDING, CONFIRMED, or PAYMENT_FAILED"

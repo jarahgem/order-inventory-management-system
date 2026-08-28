@@ -2,18 +2,65 @@
 @productA = 11111111-1111-1111-1111-111111111111
 @productB = 22222222-2222-2222-2222-222222222222
 @productC = 33333333-3333-3333-3333-333333333333
+@successPaymentKey = docs-payment-success-change-me-001
+@failurePaymentKey = docs-payment-failure-change-me-001
 
-### Health
+### Actuator discovery
+GET {{baseUrl}}/actuator
+
+### Overall health
 GET {{baseUrl}}/actuator/health
+
+### Liveness
+GET {{baseUrl}}/actuator/health/liveness
+
+### Readiness
+GET {{baseUrl}}/actuator/health/readiness
+
+### Application info
+GET {{baseUrl}}/actuator/info
+
+### Metrics index
+GET {{baseUrl}}/actuator/metrics
+
+### Prometheus scrape
+GET {{baseUrl}}/actuator/prometheus
 
 ### List products and inventory
 GET {{baseUrl}}/api/v1/products
 
-### Create and reserve an order
-# @name createOrder
+### Get seeded Product A
+GET {{baseUrl}}/api/v1/products/{{productA}}
+
+### Create a product
+# @name createProduct
+POST {{baseUrl}}/api/v1/products
+Content-Type: application/json
+X-Correlation-ID: docs-product-create
+
+{
+  "sku": "DOC-PRODUCT-CHANGE-ME-001",
+  "name": "Documentation Product",
+  "unitPrice": 14.50,
+  "initialQuantity": 0
+}
+
+### Get the created product
+GET {{baseUrl}}/api/v1/products/{{createProduct.response.body.productId}}
+
+### Restock the created product
+POST {{baseUrl}}/api/v1/products/{{createProduct.response.body.productId}}/restocks
+Content-Type: application/json
+
+{
+  "quantity": 25
+}
+
+### Create and reserve the exact assessment order
+# @name createSuccessfulOrder
 POST {{baseUrl}}/api/v1/orders
 Content-Type: application/json
-X-Correlation-ID: assessment-run-001
+X-Correlation-ID: docs-assessment-success
 
 {
   "customerReference": "customer-1001",
@@ -24,14 +71,79 @@ X-Correlation-ID: assessment-run-001
   ]
 }
 
-### Pay successfully (IntelliJ resolves createOrder response variables)
-POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.orderId}}/payments
+### Get the reserved assessment order
+GET {{baseUrl}}/api/v1/orders/{{createSuccessfulOrder.response.body.orderId}}
+
+### Pay successfully
+POST {{baseUrl}}/api/v1/orders/{{createSuccessfulOrder.response.body.orderId}}/payments
 Content-Type: application/json
-Idempotency-Key: assessment-payment-success-001
+Idempotency-Key: {{successPaymentKey}}
 
 {
   "outcome": "SUCCESS"
 }
 
-### Cancel an order (replace the ID when not using response variables)
-POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.orderId}}/cancellations
+### Retry the successful payment idempotently
+POST {{baseUrl}}/api/v1/orders/{{createSuccessfulOrder.response.body.orderId}}/payments
+Content-Type: application/json
+Idempotency-Key: {{successPaymentKey}}
+
+{
+  "outcome": "SUCCESS"
+}
+
+### Create an order for the payment-failure path
+# @name createFailedOrder
+POST {{baseUrl}}/api/v1/orders
+Content-Type: application/json
+
+{
+  "customerReference": "customer-payment-failure",
+  "items": [
+    {"productId": "{{productC}}", "quantity": 1}
+  ]
+}
+
+### Simulate payment failure and release inventory
+POST {{baseUrl}}/api/v1/orders/{{createFailedOrder.response.body.orderId}}/payments
+Content-Type: application/json
+Idempotency-Key: {{failurePaymentKey}}
+
+{
+  "outcome": "FAILURE"
+}
+
+### Get the payment-failed order
+GET {{baseUrl}}/api/v1/orders/{{createFailedOrder.response.body.orderId}}
+
+### Create an order for cancellation
+# @name createCancellationOrder
+POST {{baseUrl}}/api/v1/orders
+Content-Type: application/json
+
+{
+  "customerReference": "customer-cancellation",
+  "items": [
+    {"productId": "{{productC}}", "quantity": 1}
+  ]
+}
+
+### Cancel and release inventory
+POST {{baseUrl}}/api/v1/orders/{{createCancellationOrder.response.body.orderId}}/cancellations
+
+### Retry cancellation idempotently
+POST {{baseUrl}}/api/v1/orders/{{createCancellationOrder.response.body.orderId}}/cancellations
+
+### Expected 404 problem response
+GET {{baseUrl}}/api/v1/products/00000000-0000-0000-0000-000000000000
+
+### Expected 409 insufficient-inventory response
+POST {{baseUrl}}/api/v1/orders
+Content-Type: application/json
+
+{
+  "customerReference": "customer-insufficient-inventory",
+  "items": [
+    {"productId": "{{productA}}", "quantity": 1000000}
+  ]
+}
