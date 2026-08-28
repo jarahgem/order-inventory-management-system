@@ -287,6 +287,11 @@ Import the two files under `postman/`, select **Order Inventory - Local**, and r
 numeric order. The setup folder creates fresh products and automatically captures all generated
 product IDs, order IDs, and payment idempotency keys.
 
+If a request returns `401 Unauthorized`, set the request or collection Authorization type to
+**Basic Auth**. Use `client` / `local-client-password` for product reads and order workflows,
+and `admin` / `local-admin-password` for product creation, restocking, and restricted actuator
+routes. Postman sends this as the `Authorization: Basic ...` header.
+
 Controller and application-service methods also contain JavaDoc. Generate the browsable site with:
 
 ```bash
@@ -512,16 +517,3 @@ for the rationale and alternatives.
   production database.
 - The service is synchronous at the HTTP boundary to keep the exercise easy to run. The
   staged payment design can be moved behind a queue without changing the domain states.
-
-## Create the public GitHub repository
-
-The supplied archive includes the local `.git` directory and a sequence of small commits.
-After extracting it, create an empty public repository on GitHub and run:
-
-```bash
-git remote add origin https://github.com/YOUR_USERNAME/order-inventory-management-system.git
-git push --set-upstream origin main
-```
-
-Do not initialize the GitHub repository with a README or license because both are already
-present locally.

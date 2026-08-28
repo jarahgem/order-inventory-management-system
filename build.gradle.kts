@@ -87,5 +87,5 @@ tasks.wrapper {
     gradleVersion = "8.14.5"
     distributionType = Wrapper.DistributionType.BIN
     distributionSha256Sum = "6f74b601422d6d6fc4e1f9a1ab6522f642c2fdcbc15ae33ebd30ba3d7198e854"
-    networkTimeout.set(10_000)
+    networkTimeout.set(120_000)
 }
