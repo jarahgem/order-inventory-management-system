@@ -15,8 +15,10 @@ import com.megharaj.orderinventory.payment.domain.PaymentSimulationOutcome;
 import com.megharaj.orderinventory.payment.domain.PaymentStatus;
 import com.megharaj.orderinventory.payment.infrastructure.PaymentAttemptRepository;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,16 +29,22 @@ public class PaymentTransactionService {
     private final PaymentAttemptRepository paymentAttemptRepository;
     private final InventoryReservationService reservationService;
     private final Clock clock;
+    private final Duration processingLease;
 
     public PaymentTransactionService(
             OrderRepository orderRepository,
             PaymentAttemptRepository paymentAttemptRepository,
             InventoryReservationService reservationService,
-            Clock clock) {
+            Clock clock,
+            @Value("${payment.processing-lease:30s}") Duration processingLease) {
         this.orderRepository = orderRepository;
         this.paymentAttemptRepository = paymentAttemptRepository;
         this.reservationService = reservationService;
         this.clock = clock;
+        if (processingLease == null || processingLease.isZero() || processingLease.isNegative()) {
+            throw new IllegalArgumentException("payment.processing-lease must be greater than zero");
+        }
+        this.processingLease = processingLease;
     }
 
     @Transactional
@@ -46,12 +54,19 @@ public class PaymentTransactionService {
             PaymentSimulationOutcome requestedOutcome) {
         CustomerOrder order = lockOrder(orderId);
         order.getItems().size();
+        Instant now = clock.instant();
 
         PaymentAttempt existing = paymentAttemptRepository.findByOrderId(orderId).orElse(null);
         if (existing != null) {
             validateRetry(existing, idempotencyKey, requestedOutcome);
             validateExistingState(order, existing);
-            return toPreparation(existing, existing.getStatus() == PaymentStatus.PENDING);
+
+            boolean claimed = false;
+            if (existing.getStatus() == PaymentStatus.PENDING) {
+                claimed = existing.tryClaim(
+                        UUID.randomUUID(), now, now.plus(processingLease));
+            }
+            return toPreparation(existing, claimed);
         }
 
         if (order.getStatus() != OrderStatus.INVENTORY_RESERVED) {
@@ -62,7 +77,7 @@ public class PaymentTransactionService {
                     "Idempotency-Key has already been used for order " + attempt.getOrderId());
         });
 
-        Instant now = clock.instant();
+        UUID processingToken = UUID.randomUUID();
         order.beginPayment(now);
         PaymentAttempt attempt = PaymentAttempt.start(
                 UUID.randomUUID(),
@@ -71,6 +86,8 @@ public class PaymentTransactionService {
                 requestedOutcome,
                 order.getTotalAmount(),
                 order.getCurrency(),
+                processingToken,
+                now.plus(processingLease),
                 now);
         paymentAttemptRepository.save(attempt);
         return toPreparation(attempt, true);
@@ -84,11 +101,11 @@ public class PaymentTransactionService {
                 .orElseThrow(() -> new InventoryConsistencyException(
                         "Payment attempt " + preparation.attemptId() + " was not found"));
 
-        if (!attempt.getOrderId().equals(order.getId())) {
-            throw new InventoryConsistencyException(
-                    "Payment attempt " + attempt.getId() + " does not belong to order " + order.getId());
-        }
+        validatePreparation(preparation, order, attempt);
         if (attempt.getStatus() != PaymentStatus.PENDING) {
+            return OrderViewMapper.toView(order);
+        }
+        if (!attempt.isOwnedBy(preparation.processingToken())) {
             return OrderViewMapper.toView(order);
         }
         if (order.getStatus() != OrderStatus.PAYMENT_PENDING) {
@@ -152,6 +169,20 @@ public class PaymentTransactionService {
         }
     }
 
+    private static void validatePreparation(
+            PaymentPreparation preparation,
+            CustomerOrder order,
+            PaymentAttempt attempt) {
+        if (!attempt.getOrderId().equals(order.getId())) {
+            throw new InventoryConsistencyException(
+                    "Payment attempt " + attempt.getId() + " does not belong to order " + order.getId());
+        }
+        if (!attempt.getIdempotencyKey().equals(preparation.idempotencyKey().value())) {
+            throw new InventoryConsistencyException(
+                    "Payment preparation does not match attempt " + attempt.getId());
+        }
+    }
+
     private static PaymentPreparation toPreparation(PaymentAttempt attempt, boolean shouldCharge) {
         return new PaymentPreparation(
                 attempt.getId(),
@@ -160,6 +191,7 @@ public class PaymentTransactionService {
                 attempt.getCurrency(),
                 new IdempotencyKey(attempt.getIdempotencyKey()),
                 attempt.getRequestedOutcome(),
+                shouldCharge ? attempt.getProcessingToken() : null,
                 shouldCharge);
     }
 }

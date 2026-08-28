@@ -25,6 +25,7 @@ services:
       DB_USERNAME: order_app
       DB_PASSWORD: order_app
       DB_POOL_SIZE: 16
+      PAYMENT_PROCESSING_LEASE: 30s
     ports:
       - "8080:8080"
     depends_on:

@@ -11,9 +11,13 @@ record PaymentPreparation(
         String currency,
         IdempotencyKey idempotencyKey,
         PaymentSimulationOutcome requestedOutcome,
+        UUID processingToken,
         boolean shouldCharge) {
 
     PaymentCommand toGatewayCommand() {
+        if (!shouldCharge) {
+            throw new IllegalStateException("A non-owning payment request cannot call the gateway");
+        }
         return new PaymentCommand(
                 orderId,
                 amount,

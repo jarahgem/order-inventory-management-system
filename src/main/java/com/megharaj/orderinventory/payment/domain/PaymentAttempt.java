@@ -46,6 +46,12 @@ public class PaymentAttempt {
     @Column(name = "failure_reason", length = 255)
     private String failureReason;
 
+    @Column(name = "processing_token")
+    private UUID processingToken;
+
+    @Column(name = "lease_expires_at")
+    private Instant leaseExpiresAt;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -67,6 +73,8 @@ public class PaymentAttempt {
             PaymentSimulationOutcome requestedOutcome,
             BigDecimal amount,
             String currency,
+            UUID processingToken,
+            Instant leaseExpiresAt,
             Instant now) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.orderId = Objects.requireNonNull(orderId, "orderId must not be null");
@@ -79,6 +87,7 @@ public class PaymentAttempt {
         this.amount = Objects.requireNonNull(amount, "amount must not be null");
         this.currency = Objects.requireNonNull(currency, "currency must not be null");
         this.createdAt = Objects.requireNonNull(now, "now must not be null");
+        claim(processingToken, now, leaseExpiresAt);
     }
 
     public static PaymentAttempt start(
@@ -88,9 +97,33 @@ public class PaymentAttempt {
             PaymentSimulationOutcome requestedOutcome,
             BigDecimal amount,
             String currency,
+            UUID processingToken,
+            Instant leaseExpiresAt,
             Instant now) {
         return new PaymentAttempt(
-                id, orderId, idempotencyKey, requestedOutcome, amount, currency, now);
+                id,
+                orderId,
+                idempotencyKey,
+                requestedOutcome,
+                amount,
+                currency,
+                processingToken,
+                leaseExpiresAt,
+                now);
+    }
+
+    public boolean tryClaim(UUID newProcessingToken, Instant now, Instant newLeaseExpiresAt) {
+        requirePending();
+        Objects.requireNonNull(now, "now must not be null");
+        if (hasActiveLease(now)) {
+            return false;
+        }
+        claim(newProcessingToken, now, newLeaseExpiresAt);
+        return true;
+    }
+
+    public boolean isOwnedBy(UUID candidateProcessingToken) {
+        return candidateProcessingToken != null && candidateProcessingToken.equals(processingToken);
     }
 
     public void succeed(String providerReference, Instant now) {
@@ -98,6 +131,7 @@ public class PaymentAttempt {
         this.status = PaymentStatus.SUCCEEDED;
         this.providerReference = requireText(providerReference, "providerReference");
         this.completedAt = Objects.requireNonNull(now, "now must not be null");
+        clearProcessingLease();
     }
 
     public void fail(String providerReference, String failureReason, Instant now) {
@@ -106,6 +140,31 @@ public class PaymentAttempt {
         this.providerReference = requireText(providerReference, "providerReference");
         this.failureReason = requireText(failureReason, "failureReason");
         this.completedAt = Objects.requireNonNull(now, "now must not be null");
+        clearProcessingLease();
+    }
+
+    private boolean hasActiveLease(Instant now) {
+        return processingToken != null
+                && leaseExpiresAt != null
+                && leaseExpiresAt.isAfter(now);
+    }
+
+    private void claim(UUID newProcessingToken, Instant now, Instant newLeaseExpiresAt) {
+        UUID validatedToken = Objects.requireNonNull(
+                newProcessingToken, "processingToken must not be null");
+        Instant validatedNow = Objects.requireNonNull(now, "now must not be null");
+        Instant validatedExpiry = Objects.requireNonNull(
+                newLeaseExpiresAt, "leaseExpiresAt must not be null");
+        if (!validatedExpiry.isAfter(validatedNow)) {
+            throw new IllegalArgumentException("leaseExpiresAt must be after now");
+        }
+        this.processingToken = validatedToken;
+        this.leaseExpiresAt = validatedExpiry;
+    }
+
+    private void clearProcessingLease() {
+        this.processingToken = null;
+        this.leaseExpiresAt = null;
     }
 
     private void requirePending() {
@@ -155,6 +214,14 @@ public class PaymentAttempt {
 
     public String getFailureReason() {
         return failureReason;
+    }
+
+    public UUID getProcessingToken() {
+        return processingToken;
+    }
+
+    public Instant getLeaseExpiresAt() {
+        return leaseExpiresAt;
     }
 
     public long getVersion() {

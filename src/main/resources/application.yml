@@ -26,6 +26,9 @@ spring:
     deserialization:
       fail-on-unknown-properties: true
 
+payment:
+  processing-lease: ${PAYMENT_PROCESSING_LEASE:30s}
+
 server:
   port: ${SERVER_PORT:8080}
   shutdown: graceful
