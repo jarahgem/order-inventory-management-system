@@ -11,15 +11,37 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Coordinates atomic inventory reservation mutations for a complete order.
+ *
+ * <p>Every public method requires an existing transaction. Product identifiers are processed in
+ * deterministic order to reduce deadlock risk when concurrent orders touch the same rows.
+ */
 @Service
 public class InventoryReservationService {
 
     private final InventoryRepository inventoryRepository;
 
+    /**
+     * Creates the reservation service.
+     *
+     * @param inventoryRepository repository exposing guarded inventory mutations
+     */
     public InventoryReservationService(InventoryRepository inventoryRepository) {
         this.inventoryRepository = inventoryRepository;
     }
 
+    /**
+     * Atomically moves every requested quantity from available to reserved inventory.
+     *
+     * <p>If any product cannot be reserved, the exception marks the caller's transaction for
+     * rollback, so earlier item updates are not retained.
+     *
+     * @param items order-item snapshots to reserve
+     * @throws InsufficientInventoryException when any product lacks the requested quantity
+     * @throws org.springframework.transaction.IllegalTransactionStateException when called
+     *     without an active transaction
+     */
     @Transactional(propagation = Propagation.MANDATORY)
     public void reserveAll(List<OrderItem> items) {
         for (OrderItem item : sorted(items)) {
@@ -34,6 +56,15 @@ public class InventoryReservationService {
         }
     }
 
+    /**
+     * Returns all reserved quantities to available inventory after cancellation or payment
+     * failure.
+     *
+     * @param items order-item snapshots whose reservations must be released
+     * @throws InventoryConsistencyException when a guarded release cannot update exactly one row
+     * @throws org.springframework.transaction.IllegalTransactionStateException when called
+     *     without an active transaction
+     */
     @Transactional(propagation = Propagation.MANDATORY)
     public void releaseAll(List<OrderItem> items) {
         for (OrderItem item : sorted(items)) {
@@ -44,6 +75,17 @@ public class InventoryReservationService {
         }
     }
 
+    /**
+     * Consumes all reserved quantities after successful payment.
+     *
+     * <p>Available inventory was already reduced during reservation; committing therefore
+     * decrements only the reserved quantity.
+     *
+     * @param items order-item snapshots whose reservations must be consumed
+     * @throws InventoryConsistencyException when a guarded commit cannot update exactly one row
+     * @throws org.springframework.transaction.IllegalTransactionStateException when called
+     *     without an active transaction
+     */
     @Transactional(propagation = Propagation.MANDATORY)
     public void commitAll(List<OrderItem> items) {
         for (OrderItem item : sorted(items)) {

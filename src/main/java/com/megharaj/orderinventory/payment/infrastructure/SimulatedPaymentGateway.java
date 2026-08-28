@@ -8,9 +8,16 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
+/**
+ * Deterministic local payment adapter used by the assessment and integration tests.
+ *
+ * <p>The provider reference is derived from the order and idempotency key, so retries return the
+ * same external identifier.
+ */
 @Component
 public class SimulatedPaymentGateway implements PaymentGateway {
 
+    /** {@inheritDoc} */
     @Override
     public PaymentGatewayResult charge(PaymentCommand command) {
         String source = command.orderId() + ":" + command.idempotencyKey().value();

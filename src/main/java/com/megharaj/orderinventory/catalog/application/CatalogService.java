@@ -21,6 +21,13 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Application service for product catalog queries and inventory administration.
+ *
+ * <p>The service owns product normalization, uniqueness checks, product/inventory consistency,
+ * and transactional boundaries. Controllers should delegate these decisions rather than
+ * reimplementing them.
+ */
 @Service
 public class CatalogService {
 
@@ -31,6 +38,13 @@ public class CatalogService {
     private final InventoryRepository inventoryRepository;
     private final Clock clock;
 
+    /**
+     * Creates the catalog application service.
+     *
+     * @param productRepository product persistence gateway
+     * @param inventoryRepository inventory persistence gateway
+     * @param clock source of auditable timestamps
+     */
     public CatalogService(
             ProductRepository productRepository,
             InventoryRepository inventoryRepository,
@@ -40,6 +54,14 @@ public class CatalogService {
         this.clock = clock;
     }
 
+    /**
+     * Creates a normalized product and its initial inventory row atomically.
+     *
+     * @param command SKU, display name, unit price, and initial available quantity
+     * @return the newly created catalog item
+     * @throws InvalidRequestException when a field is missing or outside supported limits
+     * @throws ConflictException when the normalized SKU already exists
+     */
     @Transactional
     public CatalogItemView createProduct(CreateProductCommand command) {
         String sku = normalizeSku(command.sku());
@@ -60,6 +82,12 @@ public class CatalogService {
         return toView(product, inventory);
     }
 
+    /**
+     * Returns the complete catalog ordered by SKU with a consistent inventory row per product.
+     *
+     * @return immutable list of catalog views
+     * @throws IllegalStateException when persisted product and inventory data are inconsistent
+     */
     @Transactional(readOnly = true)
     public List<CatalogItemView> listCatalog() {
         List<Product> products = productRepository.findAllByOrderBySkuAsc();
@@ -77,6 +105,14 @@ public class CatalogService {
         return List.copyOf(result);
     }
 
+    /**
+     * Retrieves one product and its current inventory snapshot.
+     *
+     * @param productId product identifier
+     * @return catalog item view
+     * @throws ResourceNotFoundException when the product does not exist
+     * @throws IllegalStateException when the corresponding inventory row is missing
+     */
     @Transactional(readOnly = true)
     public CatalogItemView getCatalogItem(UUID productId) {
         Product product = findProduct(productId);
@@ -85,6 +121,16 @@ public class CatalogService {
         return toView(product, inventory);
     }
 
+    /**
+     * Adds units to available inventory using a database-side atomic increment.
+     *
+     * @param productId product to restock
+     * @param quantity positive number of units to add
+     * @return updated catalog item view
+     * @throws InvalidRequestException when {@code quantity} is not positive
+     * @throws ResourceNotFoundException when the product does not exist
+     * @throws IllegalStateException when the corresponding inventory row is missing
+     */
     @Transactional
     public CatalogItemView restock(UUID productId, long quantity) {
         if (quantity <= 0) {

@@ -23,6 +23,12 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Application service for creating, reading, and cancelling orders.
+ *
+ * <p>The service normalizes duplicate lines, snapshots product data into the order aggregate,
+ * and coordinates inventory reservations inside explicit transaction boundaries.
+ */
 @Service
 public class OrderApplicationService {
 
@@ -35,6 +41,14 @@ public class OrderApplicationService {
     private final InventoryReservationService reservationService;
     private final Clock clock;
 
+    /**
+     * Creates the order application service.
+     *
+     * @param productRepository product lookup gateway
+     * @param orderRepository order persistence gateway
+     * @param reservationService atomic inventory mutation service
+     * @param clock source of order transition timestamps
+     */
     public OrderApplicationService(
             ProductRepository productRepository,
             OrderRepository orderRepository,
@@ -46,6 +60,20 @@ public class OrderApplicationService {
         this.clock = clock;
     }
 
+    /**
+     * Creates an order and reserves all requested inventory in one transaction.
+     *
+     * <p>Duplicate product lines are combined, inactive or missing products are rejected, and the
+     * order is saved only after every reservation succeeds.
+     *
+     * @param command customer reference and requested product quantities
+     * @return order view with status {@code INVENTORY_RESERVED}
+     * @throws InvalidRequestException when the request violates item, quantity, reference, or
+     *     monetary limits
+     * @throws ResourceNotFoundException when any referenced product does not exist
+     * @throws ConflictException when a referenced product is inactive
+     * @throws InsufficientInventoryException when any requested quantity is unavailable
+     */
     @Transactional
     public OrderView createAndReserve(CreateOrderCommand command) {
         String customerReference = normalizeCustomerReference(command.customerReference());
@@ -63,6 +91,13 @@ public class OrderApplicationService {
         return OrderViewMapper.toView(order);
     }
 
+    /**
+     * Retrieves an order and eagerly loaded item snapshots.
+     *
+     * @param orderId order identifier
+     * @return current order view
+     * @throws ResourceNotFoundException when the order does not exist
+     */
     @Transactional(readOnly = true)
     public OrderView getOrder(UUID orderId) {
         CustomerOrder order = orderRepository.findDetailedById(orderId)
@@ -70,6 +105,17 @@ public class OrderApplicationService {
         return OrderViewMapper.toView(order);
     }
 
+    /**
+     * Cancels an eligible order while serializing against payment through an order-row lock.
+     *
+     * <p>An inventory-reserved order releases stock before entering {@code CANCELLED}. Repeating
+     * the operation for {@code CANCELLED} or {@code PAYMENT_FAILED} is idempotent.
+     *
+     * @param orderId order identifier
+     * @return the resulting order view
+     * @throws ResourceNotFoundException when the order does not exist
+     * @throws InvalidOrderStateException when the current state cannot be cancelled
+     */
     @Transactional
     public OrderView cancelOrder(UUID orderId) {
         CustomerOrder order = lockOrder(orderId);
@@ -91,6 +137,13 @@ public class OrderApplicationService {
         throw new InvalidOrderStateException(orderId, order.getStatus(), "be cancelled");
     }
 
+    /**
+     * Loads an order with a pessimistic write lock for state-changing workflows.
+     *
+     * @param orderId order identifier
+     * @return locked order aggregate
+     * @throws ResourceNotFoundException when the order does not exist
+     */
     CustomerOrder lockOrder(UUID orderId) {
         return orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> orderNotFound(orderId));

@@ -22,6 +22,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Owns the transactional stages around an external payment call.
+ *
+ * <p>The preparation stage locks the order, persists or reclaims a payment attempt, and grants a
+ * time-limited processing lease. The completion stage verifies lease ownership before applying
+ * the payment result and its inventory compensation exactly once.
+ */
 @Service
 public class PaymentTransactionService {
 
@@ -31,6 +38,16 @@ public class PaymentTransactionService {
     private final Clock clock;
     private final Duration processingLease;
 
+    /**
+     * Creates the transactional payment service.
+     *
+     * @param orderRepository order persistence and locking gateway
+     * @param paymentAttemptRepository payment-attempt persistence gateway
+     * @param reservationService inventory commit and release service
+     * @param clock source of lease and transition timestamps
+     * @param processingLease duration for which one request owns a pending gateway call
+     * @throws IllegalArgumentException when the configured lease is null or not positive
+     */
     public PaymentTransactionService(
             OrderRepository orderRepository,
             PaymentAttemptRepository paymentAttemptRepository,
@@ -47,6 +64,21 @@ public class PaymentTransactionService {
         this.processingLease = processingLease;
     }
 
+    /**
+     * Starts a payment attempt or evaluates an idempotent retry under an order-row lock.
+     *
+     * <p>A new attempt moves the order to {@code PAYMENT_PENDING}. An existing pending attempt can
+     * be reclaimed only after its processing lease expires.
+     *
+     * @param orderId order being paid
+     * @param idempotencyKey validated idempotency key
+     * @param requestedOutcome simulator result that must remain stable across retries
+     * @return payment preparation indicating whether this request may call the gateway
+     * @throws ResourceNotFoundException when the order does not exist
+     * @throws ConflictException when retry data conflicts with the persisted attempt
+     * @throws InvalidOrderStateException when a new payment cannot start from the current state
+     * @throws InventoryConsistencyException when order and payment states disagree
+     */
     @Transactional
     public PaymentPreparation prepare(
             UUID orderId,
@@ -93,6 +125,19 @@ public class PaymentTransactionService {
         return toPreparation(attempt, true);
     }
 
+    /**
+     * Applies a gateway result when the preparation still owns the active processing lease.
+     *
+     * <p>Success consumes reserved inventory and confirms the order. Failure releases inventory
+     * and marks the order payment-failed. A stale or already-completed preparation returns the
+     * current state without applying the result again.
+     *
+     * @param preparation persisted attempt and lease-ownership context
+     * @param result gateway outcome and provider reference
+     * @return current order view after applying or ignoring the result
+     * @throws ResourceNotFoundException when the order no longer exists
+     * @throws InventoryConsistencyException when persisted payment and order data disagree
+     */
     @Transactional
     public OrderView complete(PaymentPreparation preparation, PaymentGatewayResult result) {
         CustomerOrder order = lockOrder(preparation.orderId());

@@ -31,10 +31,10 @@ jobs:
       - name: Validate the official Gradle Wrapper JAR
         uses: gradle/actions/wrapper-validation@v6
 
-      - name: Verify application
-        run: ./gradlew --no-daemon clean build
+      - name: Verify application and JavaDoc
+        run: ./gradlew --no-daemon clean build javadoc
 
-      - name: Upload test and coverage reports
+      - name: Upload test, coverage, and JavaDoc reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
@@ -43,5 +43,6 @@ jobs:
             build/test-results/test
             build/reports/tests/test
             build/reports/jacoco/test
+            build/docs/javadoc
           if-no-files-found: ignore
           retention-days: 7
