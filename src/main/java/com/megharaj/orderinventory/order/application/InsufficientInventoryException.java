@@ -5,6 +5,8 @@ import java.util.UUID;
 
 public class InsufficientInventoryException extends ConflictException {
 
+    private static final long serialVersionUID = 1L;
+
     private final UUID productId;
     private final long requestedQuantity;
     private final long availableQuantity;
