@@ -1,5 +1,7 @@
 package com.megharaj.orderinventory.payment.application;
 
+import com.megharaj.orderinventory.common.IdempotencyKey;
+
 import com.megharaj.orderinventory.common.error.InvalidRequestException;
 import com.megharaj.orderinventory.order.application.OrderApplicationService;
 import com.megharaj.orderinventory.order.application.OrderView;

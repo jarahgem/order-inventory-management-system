@@ -83,7 +83,7 @@ class AssessmentScenarioIntegrationTest extends IntegrationTestSupport {
             CatalogItemView productB,
             CatalogItemView productC,
             String referenceSuffix) {
-        return orderService.createAndReserve(new CreateOrderCommand(
+        return placeOrder(orderService, new CreateOrderCommand(
                 "assessment-" + referenceSuffix + "-" + UUID.randomUUID(),
                 List.of(
                         new CreateOrderLineCommand(productA.productId(), 2),

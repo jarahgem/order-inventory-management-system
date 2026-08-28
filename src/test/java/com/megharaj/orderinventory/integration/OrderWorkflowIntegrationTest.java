@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.megharaj.orderinventory.catalog.application.CatalogItemView;
 import com.megharaj.orderinventory.catalog.application.CatalogService;
+import com.megharaj.orderinventory.common.IdempotencyKey;
 import com.megharaj.orderinventory.common.error.ConflictException;
 import com.megharaj.orderinventory.order.application.CreateOrderCommand;
 import com.megharaj.orderinventory.order.application.CreateOrderLineCommand;
@@ -41,6 +42,23 @@ class OrderWorkflowIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private PaymentAttemptRepository paymentAttemptRepository;
+
+    @Test
+    void repeatingOrderCreationWithTheSameKeyReplaysTheOriginalOrder() {
+        CatalogItemView product = createProduct(catalogService, 5);
+        IdempotencyKey key = new IdempotencyKey("order-" + java.util.UUID.randomUUID());
+        CreateOrderCommand command = new CreateOrderCommand(
+                "idempotent-customer",
+                List.of(new CreateOrderLineCommand(product.productId(), 2)));
+        long ordersBefore = orderRepository.count();
+
+        OrderView first = orderService.placeOrder(command, key);
+        OrderView replay = orderService.placeOrder(command, key);
+
+        assertThat(replay.orderId()).isEqualTo(first.orderId());
+        assertThat(orderRepository.count()).isEqualTo(ordersBefore + 1);
+        assertInventory(product, 3, 2);
+    }
 
     @Test
     void successfulPaymentConfirmsOrderAndConsumesReservedStockExactlyOnce() {
@@ -82,7 +100,7 @@ class OrderWorkflowIntegrationTest extends IntegrationTestSupport {
     void failedPaymentReleasesEveryItemInAMultiItemOrder() {
         CatalogItemView firstProduct = createProduct(catalogService, 4);
         CatalogItemView secondProduct = createProduct(catalogService, 7);
-        OrderView order = orderService.createAndReserve(new CreateOrderCommand(
+        OrderView order = placeOrder(orderService, new CreateOrderCommand(
                 "multi-item-payment-failure",
                 List.of(
                         new CreateOrderLineCommand(firstProduct.productId(), 2),
@@ -121,7 +139,7 @@ class OrderWorkflowIntegrationTest extends IntegrationTestSupport {
                         new CreateOrderLineCommand(availableProduct.productId(), 2),
                         new CreateOrderLineCommand(unavailableProduct.productId(), 1)));
 
-        assertThatThrownBy(() -> orderService.createAndReserve(command))
+        assertThatThrownBy(() -> placeOrder(orderService, command))
                 .isInstanceOf(InsufficientInventoryException.class);
 
         assertInventory(availableProduct, 2, 0);
@@ -149,7 +167,7 @@ class OrderWorkflowIntegrationTest extends IntegrationTestSupport {
     void duplicateLinesAreCombinedBeforeReservation() {
         CatalogItemView product = createProduct(catalogService, 5);
 
-        OrderView order = orderService.createAndReserve(new CreateOrderCommand(
+        OrderView order = placeOrder(orderService, new CreateOrderCommand(
                 "duplicate-lines-customer",
                 List.of(
                         new CreateOrderLineCommand(product.productId(), 1),
@@ -161,7 +179,7 @@ class OrderWorkflowIntegrationTest extends IntegrationTestSupport {
     }
 
     private OrderView createOrder(CatalogItemView product, long quantity) {
-        return orderService.createAndReserve(new CreateOrderCommand(
+        return placeOrder(orderService, new CreateOrderCommand(
                 "customer-" + product.productId(),
                 List.of(new CreateOrderLineCommand(product.productId(), quantity))));
     }

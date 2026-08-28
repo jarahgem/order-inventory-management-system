@@ -3,6 +3,10 @@ package com.megharaj.orderinventory.integration;
 import com.megharaj.orderinventory.catalog.application.CatalogItemView;
 import com.megharaj.orderinventory.catalog.application.CatalogService;
 import com.megharaj.orderinventory.catalog.application.CreateProductCommand;
+import com.megharaj.orderinventory.common.IdempotencyKey;
+import com.megharaj.orderinventory.order.application.CreateOrderCommand;
+import com.megharaj.orderinventory.order.application.OrderApplicationService;
+import com.megharaj.orderinventory.order.application.OrderView;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -15,6 +19,10 @@ abstract class IntegrationTestSupport {
                 "Test Product " + suffix,
                 new BigDecimal("12.50"),
                 initialQuantity));
+    }
+
+    protected OrderView placeOrder(OrderApplicationService orderService, CreateOrderCommand command) {
+        return orderService.placeOrder(command, new IdempotencyKey("order-" + UUID.randomUUID()));
     }
 
     protected String paymentKey() {

@@ -29,6 +29,18 @@ spring:
 payment:
   processing-lease: ${PAYMENT_PROCESSING_LEASE:30s}
 
+app:
+  security:
+    users:
+      - username: ${ADMIN_USERNAME:admin}
+        password: '${ADMIN_PASSWORD:$2b$10$etygHLfZ5QGpyCl1TKSjSO2h9Q2gVvNw2MU4EwHtJRmfTQ52o5d..}'
+        roles:
+          - ADMIN
+      - username: ${CLIENT_USERNAME:client}
+        password: '${CLIENT_PASSWORD:$2b$10$K47OY2NGbhQ7rewUMfZ9VOUS7wQ9FG1PKK2z5NYWF4lis4r/Pz6Oq}'
+        roles:
+          - ORDER_CLIENT
+
 server:
   port: ${SERVER_PORT:8080}
   shutdown: graceful

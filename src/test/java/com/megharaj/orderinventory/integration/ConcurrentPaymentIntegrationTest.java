@@ -61,7 +61,7 @@ class ConcurrentPaymentIntegrationTest extends IntegrationTestSupport {
     @Timeout(30)
     void concurrentPaymentRetriesCallGatewayOnceAndCommitInventoryOnce() throws Exception {
         CatalogItemView product = createProduct(catalogService, 1);
-        OrderView order = orderService.createAndReserve(new CreateOrderCommand(
+        OrderView order = placeOrder(orderService, new CreateOrderCommand(
                 "concurrent-payment-customer",
                 List.of(new CreateOrderLineCommand(product.productId(), 1))));
         String idempotencyKey = paymentKey();

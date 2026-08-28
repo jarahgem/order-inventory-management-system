@@ -26,6 +26,12 @@ services:
       DB_PASSWORD: order_app
       DB_POOL_SIZE: 16
       PAYMENT_PROCESSING_LEASE: 30s
+      # Local demo credentials only. BCrypt hashes for "local-admin-password" /
+      # "local-client-password". Replace with deployment-managed secrets in real environments.
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: '$$2b$$10$$etygHLfZ5QGpyCl1TKSjSO2h9Q2gVvNw2MU4EwHtJRmfTQ52o5d..'
+      CLIENT_USERNAME: client
+      CLIENT_PASSWORD: '$$2b$$10$$K47OY2NGbhQ7rewUMfZ9VOUS7wQ9FG1PKK2z5NYWF4lis4r/Pz6Oq'
     ports:
       - "8080:8080"
     depends_on:

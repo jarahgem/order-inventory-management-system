@@ -1,5 +1,7 @@
 package com.megharaj.orderinventory.payment.application;
 
+import com.megharaj.orderinventory.common.IdempotencyKey;
+
 import com.megharaj.orderinventory.common.error.ConflictException;
 import com.megharaj.orderinventory.common.error.InventoryConsistencyException;
 import com.megharaj.orderinventory.common.error.ResourceNotFoundException;

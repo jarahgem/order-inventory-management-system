@@ -1,5 +1,6 @@
 package com.megharaj.orderinventory.web.order;
 
+import com.megharaj.orderinventory.common.IdempotencyKey;
 import com.megharaj.orderinventory.order.application.OrderApplicationService;
 import com.megharaj.orderinventory.order.application.OrderView;
 import com.megharaj.orderinventory.payment.application.PaymentApplicationService;
@@ -45,16 +46,21 @@ public class OrderController {
     /**
      * Creates an order and atomically reserves every requested product.
      *
-     * <p>The order is persisted only when all inventory updates succeed.
+     * <p>The order is persisted only when all inventory updates succeed. The required
+     * {@code Idempotency-Key} header makes creation safe to retry: a repeated key returns the
+     * originally created order rather than reserving inventory again.
      *
+     * @param idempotencyKey unique 8-128 character key supplied in the request header
      * @param request validated customer reference and order lines
      * @return a {@code 201 Created} response with status {@code INVENTORY_RESERVED} and a
      *     {@code Location} header for the new order
      */
     @PostMapping
     public ResponseEntity<OrderView> createOrder(
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody CreateOrderRequest request) {
-        OrderView created = orderApplicationService.createAndReserve(request.toCommand());
+        OrderView created = orderApplicationService.placeOrder(
+                request.toCommand(), new IdempotencyKey(idempotencyKey));
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{orderId}")
                 .buildAndExpand(created.orderId())

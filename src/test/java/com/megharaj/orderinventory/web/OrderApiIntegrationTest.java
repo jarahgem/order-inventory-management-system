@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -23,6 +24,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@WithMockUser(roles = {"ADMIN", "ORDER_CLIENT", "CATALOG_ADMIN"})
 class OrderApiIntegrationTest {
 
     @Autowired
@@ -55,6 +57,7 @@ class OrderApiIntegrationTest {
         MvcResult created = mockMvc.perform(post("/api/v1/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("X-Correlation-ID", "api-test-correlation")
+                        .header("Idempotency-Key", "api-order-12345")
                         .content(createBody))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("X-Correlation-ID", "api-test-correlation"))
@@ -83,6 +86,7 @@ class OrderApiIntegrationTest {
     void returnsProblemDetailsForValidationAndInventoryConflicts() throws Exception {
         mockMvc.perform(post("/api/v1/orders")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key", "api-validation-12345")
                         .content("{\"customerReference\":\"\",\"items\":[]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("validation-failed"))
@@ -99,6 +103,7 @@ class OrderApiIntegrationTest {
 
         mockMvc.perform(post("/api/v1/orders")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key", "api-oversell-12345")
                         .content(oversellBody))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("conflict"));

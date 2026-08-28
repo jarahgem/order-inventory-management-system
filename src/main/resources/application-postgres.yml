@@ -1,7 +1,19 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/order_inventory}
-    username: ${DB_USERNAME:order_app}
-    password: ${DB_PASSWORD:order_app}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+app:
+  security:
+    users:
+      - username: ${ADMIN_USERNAME}
+        password: ${ADMIN_PASSWORD}
+        roles:
+          - ADMIN
+      - username: ${CLIENT_USERNAME}
+        password: ${CLIENT_PASSWORD}
+        roles:
+          - ORDER_CLIENT

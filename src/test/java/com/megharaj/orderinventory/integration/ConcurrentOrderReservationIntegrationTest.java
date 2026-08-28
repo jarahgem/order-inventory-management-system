@@ -51,7 +51,7 @@ class ConcurrentOrderReservationIntegrationTest extends IntegrationTestSupport {
                         throw new IllegalStateException("Timed out waiting to start");
                     }
                     try {
-                        orderService.createAndReserve(new CreateOrderCommand(
+                        placeOrder(orderService, new CreateOrderCommand(
                                 "concurrent-customer-" + customerNumber,
                                 List.of(new CreateOrderLineCommand(product.productId(), 1))));
                         return true;

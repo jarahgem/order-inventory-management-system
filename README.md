@@ -48,6 +48,7 @@ safe. While a lease is active, concurrent requests do not call the gateway.
 - Java 21
 - Spring Boot 3.5.16
 - Spring MVC, Validation, Data JPA, and Actuator
+- Spring Security (HTTP Basic authentication with role-based authorization)
 - Flyway database migrations
 - H2 in PostgreSQL compatibility mode for zero-setup local execution
 - PostgreSQL for the container/production profile
@@ -127,16 +128,52 @@ docker compose down --volumes
 List the catalog and current inventory:
 
 ```bash
-curl http://localhost:8080/api/v1/products
+curl --user client:local-client-password http://localhost:8080/api/v1/products
 ```
+
+## Authentication
+
+All API and non-probe actuator endpoints require HTTP Basic authentication. Access is
+role-based:
+
+| Role | Grants |
+|---|---|
+| `CATALOG_ADMIN` | Create products and restock inventory |
+| `ORDER_CLIENT` | Create/read orders, pay, cancel, and read products |
+| `ADMIN` | All of the above plus restricted actuator endpoints |
+| `MONITORING` | Restricted actuator endpoints (`metrics`, `prometheus`, `info`) |
+
+`/actuator/health` and its liveness/readiness probes stay public so orchestrators can
+schedule the service.
+
+Accounts are supplied through configuration; passwords are stored only as BCrypt hashes.
+The default local profile ships two convenience accounts (override with the
+`ADMIN_USERNAME`/`ADMIN_PASSWORD` and `CLIENT_USERNAME`/`CLIENT_PASSWORD` environment
+variables):
+
+| Username | Password (local only) | Role |
+|---|---|---|
+| `admin` | `local-admin-password` | `ADMIN` |
+| `client` | `local-client-password` | `ORDER_CLIENT` |
+
+The `postgres` (production) profile ships **no** default credentials or datasource secrets:
+`ADMIN_PASSWORD`, `CLIENT_PASSWORD`, `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD` must be
+provided or the application fails to start.
 
 ## API walkthrough
 
+The examples below use the local `client`/`admin` accounts via `curl --user`.
+
 ### 1. Create an order and reserve inventory
+
+Order creation is idempotent: supply a unique `Idempotency-Key`, and safe retries return the
+original order instead of reserving inventory twice.
 
 ```bash
 curl --request POST http://localhost:8080/api/v1/orders \
+  --user client:local-client-password \
   --header 'Content-Type: application/json' \
+  --header 'Idempotency-Key: order-customer-1001-001' \
   --data '{
     "customerReference": "customer-1001",
     "items": [
@@ -154,6 +191,7 @@ A successful response is `201 Created` and has status `INVENTORY_RESERVED`. Copy
 
 ```bash
 curl --request POST http://localhost:8080/api/v1/orders/ORDER_ID/payments \
+  --user client:local-client-password \
   --header 'Content-Type: application/json' \
   --header 'Idempotency-Key: payment-customer-1001-001' \
   --data '{"outcome":"SUCCESS"}'
@@ -168,6 +206,7 @@ Create another order, then run:
 
 ```bash
 curl --request POST http://localhost:8080/api/v1/orders/ORDER_ID/payments \
+  --user client:local-client-password \
   --header 'Content-Type: application/json' \
   --header 'Idempotency-Key: payment-customer-1002-001' \
   --data '{"outcome":"FAILURE"}'
@@ -179,7 +218,8 @@ inventory in the same completion transaction.
 ### 4. Cancel a reserved order
 
 ```bash
-curl --request POST http://localhost:8080/api/v1/orders/ORDER_ID/cancellations
+curl --request POST http://localhost:8080/api/v1/orders/ORDER_ID/cancellations \
+  --user client:local-client-password
 ```
 
 Cancellation is idempotent. A confirmed or payment-pending order cannot be cancelled by
@@ -187,8 +227,11 @@ this endpoint; a production system would model refund and return workflows separ
 
 ### 5. Create and restock products
 
+Catalog administration requires the `CATALOG_ADMIN` or `ADMIN` role:
+
 ```bash
 curl --request POST http://localhost:8080/api/v1/products \
+  --user admin:local-admin-password \
   --header 'Content-Type: application/json' \
   --data '{
     "sku": "PRODUCT-D",
@@ -200,12 +243,10 @@ curl --request POST http://localhost:8080/api/v1/products \
 
 ```bash
 curl --request POST http://localhost:8080/api/v1/products/PRODUCT_ID/restocks \
+  --user admin:local-admin-password \
   --header 'Content-Type: application/json' \
   --data '{"quantity":10}'
 ```
-
-In a real deployment, product and restock endpoints would require administrative
-authorization.
 
 ## Endpoint summary
 
@@ -380,13 +421,18 @@ together without introducing distributed-system complexity prematurely.
 | Environment variable | Default | Purpose |
 |---|---|---|
 | `SERVER_PORT` | `8080` | HTTP port |
-| `DB_URL` | H2 file database | JDBC URL |
-| `DB_USERNAME` | `sa` | Database user |
-| `DB_PASSWORD` | empty | Database password |
+| `DB_URL` | H2 file database (required on `postgres`) | JDBC URL |
+| `DB_USERNAME` | `sa` (required on `postgres`) | Database user |
+| `DB_PASSWORD` | empty (required on `postgres`) | Database password |
 | `DB_POOL_SIZE` | `16` | Maximum Hikari pool size |
 | `DB_MIN_IDLE` | `2` | Minimum idle connections |
 | `SPRING_PROFILES_ACTIVE` | none | Use `postgres` for PostgreSQL |
 | `PAYMENT_PROCESSING_LEASE` | `30s` | Single-flight ownership window for an in-progress payment call |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | `admin` / local BCrypt hash (required on `postgres`) | Admin account; password as a BCrypt hash |
+| `CLIENT_USERNAME` / `CLIENT_PASSWORD` | `client` / local BCrypt hash (required on `postgres`) | Order-client account; password as a BCrypt hash |
+
+On the `postgres` profile there are no insecure fallbacks: the datasource and credential
+variables above must be supplied or startup fails fast.
 
 Example without Docker Compose:
 
@@ -395,6 +441,8 @@ SPRING_PROFILES_ACTIVE=postgres \
 DB_URL=jdbc:postgresql://localhost:5432/order_inventory \
 DB_USERNAME=order_app \
 DB_PASSWORD=change-me \
+ADMIN_PASSWORD='{bcrypt-hash}' \
+CLIENT_PASSWORD='{bcrypt-hash}' \
 ./gradlew bootRun
 ```
 
@@ -409,18 +457,22 @@ Implemented now:
 - No remote call inside a database transaction
 - Persisted payment attempts, idempotency keys, and a database-backed processing lease
 - Graceful shutdown
+- HTTP Basic authentication with role-based authorization and locked-down actuator endpoints
+- Fail-fast configuration: the `postgres` profile refuses to start without datasource and
+  credential secrets
+- Idempotent order creation via a required `Idempotency-Key` and a unique database constraint
 - Health, liveness/readiness probes, metrics, and Prometheus endpoint
-- Correlation IDs and sanitized problem responses
+- Correlation IDs, per-request access logging, and sanitized problem responses
 - Non-root container
 - CI verification and dependency update configuration
 
 Before exposing this service publicly:
 
-- Add OAuth2/OIDC authentication and role-based authorization, especially for catalog and
-  restock operations.
+- Consider federated OAuth2/OIDC authentication in place of the built-in Basic accounts for
+  human and cross-service callers.
 - Store secrets in a secret manager and require TLS between every component.
 - Add rate limiting, request-size limits, audit events, and PII retention rules.
-- Add idempotency for order creation and durable, uniquely identified stock adjustments.
+- Add durable, uniquely identified stock adjustments.
 - Replace the simulator with a provider adapter that uses timeouts, retries only for safe
   operations, circuit breaking, and provider-side idempotency.
 - Add an outbox table and publisher so order events are emitted atomically with state

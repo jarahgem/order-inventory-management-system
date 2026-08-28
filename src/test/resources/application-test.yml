@@ -21,3 +21,15 @@ logging:
   level:
     root: WARN
     com.megharaj.orderinventory: INFO
+
+app:
+  security:
+    users:
+      - username: test-admin
+        password: '$2b$10$etygHLfZ5QGpyCl1TKSjSO2h9Q2gVvNw2MU4EwHtJRmfTQ52o5d..'
+        roles:
+          - ADMIN
+      - username: test-client
+        password: '$2b$10$K47OY2NGbhQ7rewUMfZ9VOUS7wQ9FG1PKK2z5NYWF4lis4r/Pz6Oq'
+        roles:
+          - ORDER_CLIENT

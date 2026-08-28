@@ -1,4 +1,4 @@
-package com.megharaj.orderinventory.payment.application;
+package com.megharaj.orderinventory.common;
 
 import com.megharaj.orderinventory.common.error.InvalidRequestException;
 import java.util.regex.Pattern;

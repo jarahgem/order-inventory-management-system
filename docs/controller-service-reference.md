@@ -44,7 +44,7 @@ Base path: `/api/v1/orders`
 
 | Method | HTTP endpoint | Delegates to | Result |
 |---|---|---|---|
-| `createOrder(CreateOrderRequest)` | `POST /api/v1/orders` | `OrderApplicationService.createAndReserve(CreateOrderCommand)` | `201 Created` with status `INVENTORY_RESERVED` only after all items are reserved |
+| `createOrder(String, CreateOrderRequest)` | `POST /api/v1/orders` | `OrderApplicationService.placeOrder(CreateOrderCommand, IdempotencyKey)` | `201 Created` with status `INVENTORY_RESERVED` only after all items are reserved; a repeated `Idempotency-Key` replays the original order |
 | `getOrder(UUID)` | `GET /api/v1/orders/{orderId}` | `OrderApplicationService.getOrder(UUID)` | `200 OK` with immutable item snapshots and the current order status |
 | `simulatePayment(UUID, String, SimulatePaymentRequest)` | `POST /api/v1/orders/{orderId}/payments` | `PaymentApplicationService.processPayment(...)` | `200 OK` with `PAYMENT_PENDING`, `CONFIRMED`, or `PAYMENT_FAILED` |
 | `cancelOrder(UUID)` | `POST /api/v1/orders/{orderId}/cancellations` | `OrderApplicationService.cancelOrder(UUID)` | `200 OK` with `CANCELLED`, or the existing terminal failed/cancelled state |
@@ -84,7 +84,14 @@ increment of available stock. The returned view is loaded after the increment.
 
 ### `OrderApplicationService`
 
-#### `createAndReserve(CreateOrderCommand)`
+#### `placeOrder(CreateOrderCommand, IdempotencyKey)`
+
+Makes order creation idempotent. A prior order for the same `Idempotency-Key` is replayed
+without side effects; otherwise it delegates to `createAndReserve` in its own transaction. If a
+concurrent request wins the unique-key race, this request's reservation rolls back and the
+winning order is returned.
+
+#### `createAndReserve(CreateOrderCommand, IdempotencyKey)`
 
 Runs in one transaction and provides all-or-nothing order creation:
 
@@ -94,7 +101,7 @@ Runs in one transaction and provides all-or-nothing order creation:
 4. Load products and reject missing or inactive products.
 5. Snapshot SKU, name, price, and quantity into the order aggregate.
 6. Atomically reserve every item in deterministic product-ID order.
-7. Move the order to `INVENTORY_RESERVED` and persist it.
+7. Move the order to `INVENTORY_RESERVED` and persist it with its idempotency key.
 
 If any reservation fails, the entire transaction rolls back, including reservations already made
 for earlier lines.

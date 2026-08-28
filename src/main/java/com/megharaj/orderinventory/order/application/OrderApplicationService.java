@@ -2,6 +2,7 @@ package com.megharaj.orderinventory.order.application;
 
 import com.megharaj.orderinventory.catalog.domain.Product;
 import com.megharaj.orderinventory.catalog.infrastructure.ProductRepository;
+import com.megharaj.orderinventory.common.IdempotencyKey;
 import com.megharaj.orderinventory.common.error.ConflictException;
 import com.megharaj.orderinventory.common.error.InvalidRequestException;
 import com.megharaj.orderinventory.common.error.ResourceNotFoundException;
@@ -19,7 +20,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +43,7 @@ public class OrderApplicationService {
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     private final InventoryReservationService reservationService;
+    private final OrderApplicationService self;
     private final Clock clock;
 
     /**
@@ -47,26 +52,67 @@ public class OrderApplicationService {
      * @param productRepository product lookup gateway
      * @param orderRepository order persistence gateway
      * @param reservationService atomic inventory mutation service
+     * @param self lazy self-reference used to invoke transactional creation through the proxy
      * @param clock source of order transition timestamps
      */
     public OrderApplicationService(
             ProductRepository productRepository,
             OrderRepository orderRepository,
             InventoryReservationService reservationService,
+            @Lazy OrderApplicationService self,
             Clock clock) {
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
         this.reservationService = reservationService;
+        this.self = self;
         this.clock = clock;
+    }
+
+    /**
+     * Places an order idempotently: a repeated {@code Idempotency-Key} returns the original order
+     * instead of creating or reserving inventory for a duplicate.
+     *
+     * <p>A prior order for the key is replayed without side effects. Otherwise creation proceeds in
+     * its own transaction; if a concurrent request wins the unique-key race, this request's
+     * reservation rolls back and the winning order is returned.
+     *
+     * @param command customer reference and requested product quantities
+     * @param idempotencyKey validated client-supplied key that identifies this order
+     * @return the order view for the new or previously created order
+     * @throws InvalidRequestException when the request violates item, quantity, reference, or
+     *     monetary limits
+     * @throws ResourceNotFoundException when any referenced product does not exist
+     * @throws ConflictException when a referenced product is inactive
+     * @throws InsufficientInventoryException when any requested quantity is unavailable
+     */
+    public OrderView placeOrder(CreateOrderCommand command, IdempotencyKey idempotencyKey) {
+        return findByIdempotencyKey(idempotencyKey)
+                .orElseGet(() -> createOrReplay(command, idempotencyKey));
+    }
+
+    private OrderView createOrReplay(CreateOrderCommand command, IdempotencyKey idempotencyKey) {
+        try {
+            return self.createAndReserve(command, idempotencyKey);
+        } catch (DataIntegrityViolationException duplicateKey) {
+            return findByIdempotencyKey(idempotencyKey).orElseThrow(() -> duplicateKey);
+        }
+    }
+
+    private Optional<OrderView> findByIdempotencyKey(IdempotencyKey idempotencyKey) {
+        return orderRepository.findDetailedByIdempotencyKey(idempotencyKey.value())
+                .map(OrderViewMapper::toView);
     }
 
     /**
      * Creates an order and reserves all requested inventory in one transaction.
      *
      * <p>Duplicate product lines are combined, inactive or missing products are rejected, and the
-     * order is saved only after every reservation succeeds.
+     * order is saved only after every reservation succeeds. Prefer {@link #placeOrder} so that
+     * retries are idempotent; a duplicate {@code Idempotency-Key} surfaces here as a
+     * {@link DataIntegrityViolationException}.
      *
      * @param command customer reference and requested product quantities
+     * @param idempotencyKey validated client-supplied key persisted with the order
      * @return order view with status {@code INVENTORY_RESERVED}
      * @throws InvalidRequestException when the request violates item, quantity, reference, or
      *     monetary limits
@@ -75,7 +121,7 @@ public class OrderApplicationService {
      * @throws InsufficientInventoryException when any requested quantity is unavailable
      */
     @Transactional
-    public OrderView createAndReserve(CreateOrderCommand command) {
+    public OrderView createAndReserve(CreateOrderCommand command, IdempotencyKey idempotencyKey) {
         String customerReference = normalizeCustomerReference(command.customerReference());
         Map<UUID, Long> quantities = normalizeItems(command.items());
         List<OrderItemSpec> itemSpecs = resolveProducts(quantities);
@@ -83,7 +129,7 @@ public class OrderApplicationService {
 
         Instant now = clock.instant();
         CustomerOrder order = CustomerOrder.create(
-                UUID.randomUUID(), customerReference, itemSpecs, now);
+                UUID.randomUUID(), customerReference, idempotencyKey.value(), itemSpecs, now);
 
         reservationService.reserveAll(order.getItems());
         order.markInventoryReserved(now);

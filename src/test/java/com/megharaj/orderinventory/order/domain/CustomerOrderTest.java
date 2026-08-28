@@ -52,6 +52,7 @@ class CustomerOrderTest {
         return CustomerOrder.create(
                 UUID.randomUUID(),
                 "customer-123",
+                "order-" + UUID.randomUUID(),
                 List.of(
                         new OrderItemSpec(
                                 UUID.randomUUID(),

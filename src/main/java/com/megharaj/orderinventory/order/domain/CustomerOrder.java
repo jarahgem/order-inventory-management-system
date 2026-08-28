@@ -30,6 +30,9 @@ public class CustomerOrder {
     @Column(name = "customer_reference", nullable = false, length = 100)
     private String customerReference;
 
+    @Column(name = "idempotency_key", length = 128, updatable = false)
+    private String idempotencyKey;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private OrderStatus status;
@@ -58,15 +61,24 @@ public class CustomerOrder {
         // Required by JPA.
     }
 
-    private CustomerOrder(UUID id, String customerReference, List<OrderItemSpec> itemSpecs, Instant now) {
+    private CustomerOrder(
+            UUID id,
+            String customerReference,
+            String idempotencyKey,
+            List<OrderItemSpec> itemSpecs,
+            Instant now) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         if (customerReference == null || customerReference.isBlank()) {
             throw new IllegalArgumentException("customerReference must not be blank");
+        }
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("idempotencyKey must not be blank");
         }
         if (itemSpecs == null || itemSpecs.isEmpty()) {
             throw new IllegalArgumentException("An order must contain at least one item");
         }
         this.customerReference = customerReference;
+        this.idempotencyKey = idempotencyKey;
         this.status = OrderStatus.CREATED;
         this.currency = DEFAULT_CURRENCY;
         this.createdAt = Objects.requireNonNull(now, "now must not be null");
@@ -81,9 +93,10 @@ public class CustomerOrder {
     public static CustomerOrder create(
             UUID id,
             String customerReference,
+            String idempotencyKey,
             List<OrderItemSpec> itemSpecs,
             Instant now) {
-        return new CustomerOrder(id, customerReference, itemSpecs, now);
+        return new CustomerOrder(id, customerReference, idempotencyKey, itemSpecs, now);
     }
 
     public void markInventoryReserved(Instant now) {
@@ -130,6 +143,10 @@ public class CustomerOrder {
 
     public String getCustomerReference() {
         return customerReference;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
     }
 
     public OrderStatus getStatus() {
